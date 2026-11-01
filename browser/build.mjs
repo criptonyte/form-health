@@ -1,0 +1,14 @@
+import {build} from 'vite';
+import {readFile,readdir,writeFile,unlink} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {resolve} from 'node:path';
+await build({configFile:resolve(import.meta.dirname,'vite.config.ts')});
+const root=resolve(import.meta.dirname,'../docs');
+const html=await readFile(root+'/index.html','utf8');
+const linked=new Set([...html.matchAll(/(?:src|href)="\.\/assets\/([^"?#]+)"/g)].map(m=>m[1]));
+for(const name of await readdir(root+'/assets'))if(!linked.has(name))await unlink(root+'/assets/'+name);
+const paths=(await readdir(root+'/assets')).map(p=>'assets/'+p).concat(['index.html','oauth-callback.html','oauth-callback.js']);
+const hash=createHash('sha256');for(const p of paths.sort())hash.update(await readFile(root+'/'+p));
+const version='form-local-'+hash.digest('hex').slice(0,12);
+const sw=await readFile(root+'/sw.js','utf8');await writeFile(root+'/sw.js',sw.replace("'form-local-v1'",JSON.stringify(version)));
+console.log('Offline app version:',version);

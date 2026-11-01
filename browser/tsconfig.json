@@ -1,0 +1,1 @@
+{"extends":"../tsconfig.json","compilerOptions":{"allowJs":false,"strict":true,"target":"ES2022","lib":["ES2023","DOM"],"incremental":false},"include":["./*.ts","./*.tsx"],"exclude":[]}
