@@ -1,0 +1,7 @@
+import { getDb } from '../../../db';
+import { records } from '../../../db/schema';
+import { eq, and } from 'drizzle-orm';
+import { userId, payload, json, fail, AppError, number } from '../../lib/server';
+import { dayKey } from '../../lib/analysis';
+export async function POST(req:Request){try{const owner=await userId();const b=await payload(req);if(!['weight','food','water'].includes(b.kind))throw new AppError('Choose a valid entry type.');if(typeof b.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(b.date)||!Number.isFinite(Date.parse(b.date))||new Date(b.date).toISOString().slice(0,10)!==b.date||b.date>dayKey(new Date(),'Pacific/Kiritimati')||b.date<'2000-01-01')throw new AppError('Choose a valid date, today or earlier.');const value=number(b.value,b.kind==='weight'?20:1,b.kind==='weight'?400:b.kind==='water'?10000:10000);const label=typeof b.label==='string'?b.label.trim().slice(0,120):'';if(b.kind==='food'&&!label)throw new AppError('Add a food description.');const id=crypto.randomUUID();await getDb().insert(records).values({id,owner,kind:b.kind,date:b.date,value,label,source:'manual',createdAt:Date.now()});return json({id},201);}catch(e){return fail(e);}}
+export async function DELETE(req:Request){try{const owner=await userId();const b=await payload(req);if(typeof b.id!=='string')throw new AppError('Entry ID is required.');await getDb().delete(records).where(and(eq(records.id,b.id),eq(records.owner,owner),eq(records.source,'manual')));return json({ok:true});}catch(e){return fail(e);}}
