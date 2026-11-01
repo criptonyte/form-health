@@ -1,5 +1,7 @@
 # Form — Personal health
 
+> **Browser-only GitHub Pages edition:** see [BROWSER.md](BROWSER.md). Its source is in `browser/` and the ready-to-publish site is in `docs/`. It stores encrypted records on your phone and makes direct Withings requests. The earlier Sites-based edition is documented below.
+
 A private, installable web application for weight analysis, food journaling and water tracking. Built with React, Vinext and Cloudflare D1. Hosted access uses Sign in with ChatGPT and owner-only Sites access.
 
 ## Features
