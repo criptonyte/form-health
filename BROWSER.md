@@ -48,3 +48,8 @@ Use **Backup & import → Import weight CSV** for a Withings CSV export. Extract
 - Production static build: `node browser/build.mjs`.
 
 The internal HTTP preview cannot exercise Web Crypto vault operations: Chrome correctly requires a secure context. HTTPS Pages validation and real Withings account testing remain necessary. No browser protections should be disabled to work around the preview limit.
+
+## Automatic opening update
+The app now remembers a non-extractable AES CryptoKey in this browser’s IndexedDB, alongside the encrypted document. It opens directly on later visits; it no longer provides a separate passphrase barrier on this device. Protect access with the device screen lock. Existing passphrase-only vaults require the old passphrase once to retain their records, then remember the key. New installations create local storage automatically. Exported backups use a separate user-chosen password (10 characters minimum), and restored backups remember their key locally too. Clearing site data removes both the document and device key.
+
+OAuth no longer treats a closed window proxy as cancellation: browser isolation can sever it during login. The callback retries its in-memory handoff and displays success only after token exchange and local persistence succeed. Keep the original app open and return promptly after approving Withings access. No callback code is persisted. Real account verification still requires the user’s Withings login.
