@@ -3,3 +3,5 @@ self.addEventListener('install',event=>{event.waitUntil((async()=>{const cache=a
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const key of await caches.keys())if(key.startsWith('form-local-')&&key!==VERSION)await caches.delete(key);await self.clients.claim();})()));
 self.addEventListener('fetch',event=>{const url=new URL(event.request.url);if(event.request.method!=='GET'||url.origin!==self.location.origin||!url.href.startsWith(self.registration.scope))return;if(event.request.mode==='navigate'&&url.pathname.endsWith('oauth-callback.html')){event.respondWith(fetch(event.request).catch(()=>caches.match('./oauth-callback.html')));return;}if(event.request.mode==='navigate'){event.respondWith(fetch(event.request).catch(()=>caches.match('./')));return;}event.respondWith(caches.match(event.request).then(cached=>cached||fetch(event.request)));});
 // Withings responses, credentials and health records are never put in CacheStorage.
+
+self.addEventListener('notificationclick',event=>{event.notification.close();event.waitUntil(self.clients.openWindow(new URL('./?view=water',self.registration.scope).href));});
