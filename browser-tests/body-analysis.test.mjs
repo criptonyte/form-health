@@ -13,7 +13,7 @@ test('sparse readings leave gaps and do not invent a recent comparison',()=>{
 });
 test('body fat uses daily and rolling medians; changes are percentage points and missing estimates stay absent',()=>{
  const entries=[entry('2026-10-06',95,31),entry('2026-10-07',95,32),entry('2026-10-08',95,33),entry('2026-10-25',94,28),entry('2026-10-26',94,29),entry('2026-10-27',94,50),entry('2026-10-27',94,30),entry('2026-10-28',94,null),entry('2026-11-01',94,0)];
- const a=bodyAnalysis(entries,30,'2026-11-01','bodyFat');assert.equal(a.currentValue,29);assert.equal(a.previousValue,32);assert.equal(a.delta,-3);assert.equal(a.daily.length,6);assert.equal(a.daily.at(-1).value,40);assert.equal(a.rolling.at(-1).smooth,29);
+ const a=bodyAnalysis(entries,30,'2026-11-01','bodyFat');assert.equal(a.currentValue,29);assert.equal(a.previousValue,32);assert.equal(a.delta,null);assert.equal(a.comparisonMinimum,7);assert.equal(a.daily.length,6);assert.equal(a.daily.at(-1).value,40);assert.equal(a.rolling.at(-1).smooth,29);
 });
 test('axis stays consistent across periods; future and out of history readings are excluded',()=>{
  const entries=[entry('2026-08-10',100),entry('2026-10-28',92),entry('2026-11-01',90),entry('2026-11-02',200),entry('2026-01-01',300)];
@@ -25,4 +25,10 @@ test('recent comparison weights measured days equally and does not change with t
 });
 test('body-fat-only groups are analysed without manufacturing a weight',()=>{
  const a=bodyAnalysis([{id:'fat-only',kind:'bodyFat',date:'2026-11-01',value:27.5,label:'',source:'withings'}],30,'2026-11-01','bodyFat');assert.equal(a.latest.value,27.5);assert.equal(a.currentValue,null);
+});
+
+test('body fat compares only when both fortnight windows have at least seven measured days',()=>{
+ const rows=Array.from({length:28},(_,i)=>entry(new Date(Date.parse('2026-11-01')-i*86400000).toISOString().slice(0,10),90,i<14?28:30));
+ const complete=bodyAnalysis(rows,30,'2026-11-01','bodyFat');assert.equal(complete.delta,-2);
+ const sparse=bodyAnalysis(rows.filter((_,i)=>i>=14||i<3),30,'2026-11-01','bodyFat');assert.equal(sparse.currentValue,28);assert.equal(sparse.previousValue,30);assert.equal(sparse.delta,null);
 });
