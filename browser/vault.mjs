@@ -1,6 +1,6 @@
 import {deviceTimezone} from './timezone.mjs';
 const DB_NAME='form-health-local-v1';
-export const INITIAL_PREFERENCES={goal:85,calories:2000,water:2500,timezone:deviceTimezone()};
+export const INITIAL_PREFERENCES={goal:85,calories:2000,water:2500,calorieTracking:true,weightNotification:false,timezone:deviceTimezone()};
 const ITERATIONS=310000;
 const bytes=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const base64=b=>{let text='';for(let i=0;i<b.length;i+=16384)text+=String.fromCharCode(...b.subarray(i,i+16384));return btoa(text);};

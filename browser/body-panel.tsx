@@ -14,15 +14,16 @@ export default function BodyPanel({entries,today,days,setDays,connected,busy,onS
  return <section className={'body-panel '+(fat?'body-fat':'')} aria-label="Body trends">
   <div className="body-chart card">
    <div className="body-chart-title"><div><div className="chart-heading-line"><h2>Body trends</h2><button className="chart-info-button" aria-label="About this chart" aria-expanded={info} aria-controls="chart-explanation" onClick={()=>setInfo(!info)}><CircleHelp size={16}/></button></div><p>{a.daily.length} of {days} days measured</p></div><button className="body-sync" onClick={connected?onSync:onConnect} disabled={busy} aria-label={connected?'Sync Withings':'Connect Withings'}><RefreshCw size={16} className={busy?'spin':''}/>{busy?'Syncing…':connected?'Sync':'Connect'}</button></div>
-   {info&&<div className="chart-explanation" id="chart-explanation"><p>{fat?'Body fat uses a 14-day median to soften isolated spikes. It is a scale estimate that can vary with hydration.':'Weight uses a 7-day average to smooth daily fluctuations.'} Direction compares the first and last {a.window} days, with at least {a.comparisonMinimum} measured days in each. Gaps stay blank.</p></div>}
+   {info&&<div className="chart-explanation" id="chart-explanation"><p>{fat?'Body fat uses a 14-day median to soften isolated spikes. It can vary with hydration; changes are percentage points (pp).':'Weight uses a 7-day average to smooth daily fluctuations.'} Direction compares the first and last {a.window} days, with at least {a.comparisonMinimum} measured days in each. Gaps stay blank.</p></div>}
    <div className="chart-view-controls"><div className="metric-switch" role="group" aria-label="Chart measurement">{(['weight','bodyFat'] as const).map(m=><button key={m} aria-pressed={metric===m} onClick={()=>setMetric(m)}>{m==='weight'?'Weight':'Body fat'}</button>)}</div><div className="period-switch" role="group" aria-label="Analysis period">{[30,60,90].map(n=><button key={n} aria-label={`${n} days`} aria-pressed={days===n} className={days===n?'selected':''} onClick={()=>setDays(n)}>{n}<span> days</span></button>)}</div></div>
-  <div className="body-stats">
+  <div className="body-summary"><div className="body-stats">
    <div className="body-stat"><p>{fat?'Latest estimate':'Latest daily reading'}</p><strong>{number(a.latest?.value??null)}<small>{unit}</small></strong><span>{a.latest?`${date(a.latest.date)}${a.age!==null&&a.age>0?` · ${a.age} ${a.age===1?'day':'days'} ago`:''}`:'No readings in this period'}</span></div>
    <div className="body-stat emphasis"><p>{smoothLabel}</p><strong>{number(a.currentValue)}<small>{unit}</small></strong><span>{a.current.length} of {a.window} days measured{a.current.length<3?' · need 3+':a.current.length<a.comparisonMinimum?' · limited coverage':''}</span></div>
   </div>
   <div className="period-direction" role="status">
    <div><span className="direction-label">{days}-day change</span><div className="direction-value">{delta!==null&&(delta<0?<ArrowDownRight size={25}/>:delta>0?<ArrowUpRight size={25}/>:<Minus size={25}/>)}<strong>{delta===null?'—':signed(delta)}<small>{delta===null?'':fat?' pp':' kg'}</small></strong><span>{direction}</span></div></div>
    <p>{delta===null?`${a.starting.length} days at start · ${a.current.length} now`:<><b>{number(a.startingValue)} → {number(a.currentValue)} {unit}</b><span>First vs last {a.window} days</span></>}</p>
+  </div>
   </div>
    <div className="body-chart-key"><span><i/>{smoothLabel}</span><span><b/>Daily {fat?'estimate':'reading'}</span></div>
    <BodyChart key={metric+days} analysis={a} today={today} days={days}/>
@@ -33,7 +34,7 @@ export default function BodyPanel({entries,today,days,setDays,connected,busy,onS
 function BodyChart({analysis:a,today,days}:{analysis:ReturnType<typeof bodyAnalysis>;today:string;days:number}){
  const ref=useRef<HTMLDivElement>(null),[width,setWidth]=useState(360);
  useEffect(()=>{if(!ref.current)return;const observer=new ResizeObserver(([entry])=>setWidth(Math.max(240,Math.round(entry.contentRect.width))));observer.observe(ref.current);return()=>observer.disconnect();},[]);
- const W=width,H=width<600?240:280,L=43,R=14,T=16,B=32,start=Date.parse(today)-(days-1)*86400000;
+ const W=width,H=width<600?250:330,L=43,R=14,T=16,B=32,start=Date.parse(today)-(days-1)*86400000;
  const x=(s:string)=>L+(Date.parse(s)-start)/((days-1)*86400000)*(W-L-R),y=(v:number)=>T+(a.high-v)/(a.high-a.low)*(H-T-B);
  const fat=a.metric==='bodyFat';
  if(!a.daily.length)return <div className="body-plot" ref={ref}><div className="body-plot-empty"><Activity size={28}/><p>No {fat?'body fat':'weight'} readings in this period.</p></div></div>;
