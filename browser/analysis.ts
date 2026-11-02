@@ -60,3 +60,30 @@ export function bodyAnalysis(entries:Entry[],days:number,today:string,metric:Bod
  return{metric,window,maxGap,comparisonMinimum,starting,startingValue,rangeDelta,daily,rolling,all,current,previous,currentValue,previousValue,delta,gaps,low,high,ticks,latest:daily.at(-1)??null,age:daily.length?Math.round((end-Date.parse(daily.at(-1)!.date))/DAY):null,
   smoothSegments:splitAtGaps(rolling.filter((p):p is typeof p&{smooth:number}=>p.smooth!==null),maxGap),rawSegments:splitAtGaps(daily,maxGap)};
 }
+
+// One weight-led interpretation, using identical endpoint dates for both signals.
+export function bodyInsight(entries:Entry[],days:number,today:string){
+ const end=Date.parse(today),start=end-(days-1)*DAY,window=14;
+ const weights=new Map<string,number[]>(),fatMass=new Map<string,number[]>();
+ for(const e of entries){if(e.kind!=='weight'||!Number.isFinite(e.value)||e.value<20||e.value>400||e.date>today||Date.parse(e.date)<start)continue;
+  weights.set(e.date,[...(weights.get(e.date)||[]),e.value]);
+  // Calculate each paired reading before aggregating: never multiply separate averages.
+  if(typeof e.bodyFat==='number'&&Number.isFinite(e.bodyFat)&&e.bodyFat>0&&e.bodyFat<100)fatMass.set(e.date,[...(fatMass.get(e.date)||[]),e.value*e.bodyFat/100]);
+ }
+ const dailyWeight=[...weights].map(([date,v])=>({date,value:v.reduce((s,n)=>s+n,0)/v.length}));
+ const dailyFat=[...fatMass].map(([date,v])=>({date,value:median(v)}));
+ const first=(p:{date:string})=>Date.parse(p.date)>=start&&Date.parse(p.date)<start+window*DAY;
+ const last=(p:{date:string})=>Date.parse(p.date)>=end-(window-1)*DAY&&p.date<=today;
+ const wStart=dailyWeight.filter(first),wEnd=dailyWeight.filter(last),fStart=dailyFat.filter(first),fEnd=dailyFat.filter(last);
+ const mean=(v:{value:number}[])=>v.reduce((s,p)=>s+p.value,0)/v.length;
+ const weightDelta=days>=window*2&&wStart.length>=3&&wEnd.length>=3?Math.round((mean(wEnd)-mean(wStart))*10)/10:null;
+ const fatDelta=days>=window*2&&fStart.length>=7&&fEnd.length>=7?Math.round((median(fEnd.map(p=>p.value))-median(fStart.map(p=>p.value)))*10)/10:null;
+ let context='More weight readings needed.';
+ if(weightDelta!==null){
+  if(fatDelta===null)context='Too few paired fat readings.';
+  else if(weightDelta<0)context=fatDelta<0?'Fat estimate also lower.':'Composition change unclear.';
+  else if(weightDelta>0)context=fatDelta>0?'Fat estimate also higher.':'Composition change unclear.';
+  else context=fatDelta<0?'Possible composition change; unconfirmed.':'No clear fat-mass change.';
+ }
+ return{weightDelta,fatDelta,context,window,weightStartCount:wStart.length,weightEndCount:wEnd.length,fatStartCount:fStart.length,fatEndCount:fEnd.length};
+}

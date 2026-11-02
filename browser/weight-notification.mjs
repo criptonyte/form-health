@@ -4,7 +4,7 @@ export function weightNotice(entries,today){
  if(!latest)return null;
  const value=latest.value.toFixed(1),key=JSON.stringify([latest.id,latest.date,latest.value,latest.createdAt||null]);
  const date=new Date(latest.date+'T12:00:00Z').toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'});
- return{key,value,title:`${value} kg · latest weight`,options:{body:`Measured ${date} · Withings`,tag:TAG,icon:'./icon-192.png',silent:true,renotify:false,requireInteraction:true,data:{view:'overview',readingKey:key}}};
+ return{key,value,badgeValue:String(Math.round(latest.value)),title:`${value} kg · latest weight`,options:{body:`Measured ${date} · Withings`,tag:TAG,icon:'./icon-192.png',silent:true,renotify:false,requireInteraction:true,data:{view:'overview',readingKey:key}}};
 }
 export async function reconcileWeightNotification(reg,entries,prefs,today,renderBadge){
  // Retire the old water notice without deleting any historic logs.
@@ -13,7 +13,7 @@ export async function reconcileWeightNotification(reg,entries,prefs,today,render
  if(!prefs.weightNotification||!notice){for(const n of await reg.getNotifications({tag:TAG}))n.close();return null;}
  // A dismissed reading stays dismissed. Only a new reading or explicit Show again resets this.
  if(prefs.weightNoticeKey===notice.key)return null;
- const badge=renderBadge?.(notice.value);if(badge)notice.options.badge=badge;
+ const badge=renderBadge?.(notice.badgeValue);if(badge)notice.options.badge=badge;
  await reg.showNotification(notice.title,notice.options);
  return notice.key;
 }

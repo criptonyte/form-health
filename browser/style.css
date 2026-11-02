@@ -19,3 +19,5 @@ dialog{border:1px solid #e1e7d7;border-radius:20px;padding:0;width:470px;max-wid
 /* Keep supporting text readable against the warm surfaces. */
 .body-stat>span,.body-chart-title p{color:#748369}.body-chart-key{color:#6c805f}.chart-footnote{color:#7a8a6d}.period-direction>p{color:#758a60}.direction-label,.direction-value>span{color:#71885c}.body-history th,.body-history td small{color:#7d8e6c}.goal-context{color:#778b62}.subtitle{color:#78886b}.setting-note,.setting-toggle small,.settings-device-note{color:#7b8c6b}
 @media(max-width:700px){.direction-label,.period-direction>p,.body-chart-key,.chart-footnote{font-size:10px}}
+.period-direction .combined-insight b{font-weight:450}.period-direction .combined-insight span{display:block;margin-top:3px;font-size:9px;color:#8a9a76}
+@media(min-width:701px){.period-direction .combined-insight b{display:block;font-size:10px;line-height:1.5}.period-direction .combined-insight span{display:block}}
