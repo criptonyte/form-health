@@ -1,4 +1,4 @@
-export type Entry = { id: string; kind: string; date: string; value: number; label: string; source: string; bodyFat?: number | null };
+export type Entry = { id: string; kind: string; date: string; value: number; label: string; source: string; bodyFat?: number | null; loggedAt?: string; createdAt?:number };
 export function dayKey(date: Date = new Date(), timezone = 'Australia/Sydney') {
  const parts = new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date);
  return ['year','month','day'].map(t=>parts.find(p=>p.type===t)?.value).join('-');
@@ -48,12 +48,15 @@ export function bodyAnalysis(entries:Entry[],days:number,today:string,metric:Bod
  const currentValue=current.length>=3?reduce(current.map(p=>p.value)):null,previousValue=previous.length>=3?reduce(previous.map(p=>p.value)):null;
  const comparisonMinimum=metric==='bodyFat'?7:3;
  const delta=current.length>=comparisonMinimum&&previous.length>=comparisonMinimum&&currentValue!==null&&previousValue!==null?currentValue-previousValue:null;
+ const starting=all.filter(p=>Date.parse(p.date)>=start&&Date.parse(p.date)<start+window*DAY);
+ const startingValue=starting.length>=comparisonMinimum?reduce(starting.map(p=>p.value)):null;
+ const rangeDelta=days>=2*window&&current.length>=comparisonMinimum&&currentValue!==null&&startingValue!==null?currentValue-startingValue:null;
  const gaps=[] as {from:string;to:string;missing:number}[];
  for(let i=1;i<daily.length;i++){const missing=(Date.parse(daily[i].date)-Date.parse(daily[i-1].date))/DAY-1;if(missing>=maxGap)gaps.push({from:daily[i-1].date,to:daily[i].date,missing});}
  const values=all.map(p=>p.value);const min=values.length?Math.min(...values):0,max=values.length?Math.max(...values):1;
  const rawStep=Math.max((max-min+.6)/4,.5),step=[.5,1,2,2.5,5,10,20,25,50].find(v=>v>=rawStep)??Math.ceil(rawStep/10)*10;
  const low=Math.max(0,Math.floor((min-.3)/step)*step),high=low+Math.max(4,Math.ceil((max+.3-low)/step))*step;
  const ticks=Array.from({length:Math.round((high-low)/step)+1},(_,i)=>high-i*step);
- return{metric,window,maxGap,comparisonMinimum,daily,rolling,all,current,previous,currentValue,previousValue,delta,gaps,low,high,ticks,latest:daily.at(-1)??null,age:daily.length?Math.round((end-Date.parse(daily.at(-1)!.date))/DAY):null,
+ return{metric,window,maxGap,comparisonMinimum,starting,startingValue,rangeDelta,daily,rolling,all,current,previous,currentValue,previousValue,delta,gaps,low,high,ticks,latest:daily.at(-1)??null,age:daily.length?Math.round((end-Date.parse(daily.at(-1)!.date))/DAY):null,
   smoothSegments:splitAtGaps(rolling.filter((p):p is typeof p&{smooth:number}=>p.smooth!==null),maxGap),rawSegments:splitAtGaps(daily,maxGap)};
 }
