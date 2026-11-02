@@ -17,7 +17,7 @@ export async function reconcileWeightNotification(reg,entries,prefs,today,render
  await reg.showNotification(notice.title,notice.options);
  return notice.key;
 }
-function numericBadge(value){const canvas=document.createElement('canvas');canvas.width=canvas.height=96;const ctx=canvas.getContext('2d');if(!ctx)return null;ctx.fillStyle='white';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`700 ${value.length>4?30:38}px sans-serif`;ctx.fillText(value,48,49,92);return canvas.toDataURL('image/png');}
+function numericBadge(value){const canvas=document.createElement('canvas');canvas.width=canvas.height=96;const ctx=canvas.getContext('2d');if(!ctx)return null;ctx.fillStyle='white';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`700 ${value.length<=2?76:52}px sans-serif`;ctx.fillText(value,48,49,92);return canvas.toDataURL('image/png');}
 let pending=Promise.resolve();
 export function updateWeightNotification(entries,prefs,today,onPublished){
  const run=async()=>{if(!('Notification'in globalThis)||Notification.permission!=='granted'||!('serviceWorker'in navigator))return;const reg=await navigator.serviceWorker.getRegistration();if(!reg?.active)return;const key=await reconcileWeightNotification(reg,entries,prefs,today,numericBadge);if(key)await onPublished(key);};
