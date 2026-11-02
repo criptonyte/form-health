@@ -76,3 +76,12 @@ A reported Android Chromium defect (issue 572287931, duplicate of 568841400) can
 
 ## Android callback completion
 The OAuth callback is now a separate bundled entry point. It opens the existing remembered local vault, validates the encrypted, expiring pending state, claims it once, exchanges the code directly with Withings, and persists tokens before showing success. It does not need the original PWA window or `window.opener`. A state-only notification and a polling fallback let an existing app instance reload the saved connection; reopening the app also reads it normally. Codes and tokens are not passed through messages or stored in URLs after callback startup. Wrong-browser storage, expired state, denied permission, and token failures produce a visible callback error. A stopped or replayed request cannot overwrite a newer connection. Actual authentication remains an owner-device check.
+
+## Selected-period direction, calorie timestamps and water notices
+The headline now compares the first and last averaging windows within the selected duration, rather than using the previous calendar week as the primary direction. Endpoint windows must not overlap and retain the measured-day coverage requirements (weight: 3 per 7 days; body fat: 7 per 14). Custom durations from 7–90 days are supported; insufficient or overlapping windows withhold direction. This describes endpoint averages, not a fitted trend or proof of fat loss.
+
+Calorie entries need an amount only. A local wall-clock date/time is prefilled using the preference timezone and can be edited for past logging; the insertion timestamp remains separate. Manual historical entries are no longer hidden by the Withings 90-day filter. The log shows timestamps, preserving old descriptions when present.
+
+Preferences reports whether the bundled Inter face actually loads, with fallback stated explicitly. Compact layouts were reviewed at 320 and 360 CSS pixels, in addition to larger widths.
+
+An opt-in water notification uses the service-worker notification API, a stable tag, silent replacement, the exact date/total/target in text and an experimental numeric millilitre badge. Android/browser behavior controls icon rendering and dismissal; the web app cannot guarantee a pinned status-bar total. It updates after logging or on foreground day changes. No closed-app midnight reset, backend push or scheduled background delivery is claimed. Tapping opens the water view. Disabling closes the tagged notice. The user grants permission directly from Preferences.
