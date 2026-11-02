@@ -1,5 +1,5 @@
 export type Entry = { id: string; kind: string; date: string; value: number; label: string; source: string; bodyFat?: number | null; loggedAt?: string; createdAt?:number };
-export function dayKey(date: Date = new Date(), timezone = 'Australia/Sydney') {
+export function dayKey(date: Date = new Date(), timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC') {
  const parts = new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date);
  return ['year','month','day'].map(t=>parts.find(p=>p.type===t)?.value).join('-');
 }
