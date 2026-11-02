@@ -5,17 +5,18 @@ export async function requestTokens(connection,fields){const b=await post(TOKEN_
 export function callbackUrl(){return new URL('oauth-callback.html',document.baseURI).href;}
 export function withingsAuthorization(clientId,redirectUri,state){return 'https://account.withings.com/oauth2_user/authorize2?'+new URLSearchParams({response_type:'code',client_id:clientId,scope:'user.metrics',redirect_uri:redirectUri,state});}
 export function authoriseInPopup(connection,signal){
- const state=crypto.randomUUID()+crypto.randomUUID(),redirectUri=callbackUrl();let popup,channel,finished=false,timer,closePoll;
+ const state=crypto.randomUUID()+crypto.randomUUID(),redirectUri=callbackUrl();let popup,channel,finished=false,timer;
  return new Promise((resolve,reject)=>{
- const cleanup=()=>{window.removeEventListener('message',receive);signal?.removeEventListener('abort',cancel);channel?.close();clearTimeout(timer);clearInterval(closePoll);};
+ const cleanup=()=>{window.removeEventListener('message',receive);signal?.removeEventListener('abort',cancel);channel?.close();clearTimeout(timer);};
  const cancel=()=>{if(finished)return;finished=true;cleanup();popup?.close();reject(new Error('Withings connection cancelled. You can connect again when ready.'));};
  signal?.addEventListener('abort',cancel,{once:true});
- const accept=message=>{if(finished||!message||message.type!=='form-withings-callback'||message.state!==state)return;if(message.error){finished=true;cleanup();popup?.close();reject(new Error('Withings connection was cancelled.'));return;}if(typeof message.code!=='string'||message.code.length>1024)return;finished=true;cleanup();popup?.close();resolve({code:message.code,redirectUri});};
+ const accept=message=>{if(finished||!message||message.type!=='form-withings-callback'||message.state!==state)return;if(message.error){finished=true;cleanup();popup?.close();reject(new Error('Withings connection was cancelled.'));return;}if(typeof message.code!=='string'||message.code.length>1024)return;finished=true;window.removeEventListener('message',receive);signal?.removeEventListener('abort',cancel);clearTimeout(timer);const complete=(error)=>{const result={type:'form-withings-result',state,error:error||null};try{popup?.postMessage(result,location.origin);}catch{}channel?.postMessage(result);setTimeout(()=>channel?.close(),1000);};resolve({code:message.code,redirectUri,complete});};
  function receive(event){if(event.origin===location.origin&&event.source===popup)accept(event.data);}
  window.addEventListener('message',receive);if('BroadcastChannel'in window){channel=new BroadcastChannel('form-withings-auth');channel.onmessage=e=>accept(e.data);}
  popup=window.open(withingsAuthorization(connection.clientId,redirectUri,state),'form-withings-login','popup,width=520,height=720');
  if(!popup){cleanup();reject(new Error('Allow pop-ups for Form, then tap Connect again.'));return;}
- closePoll=setInterval(()=>{if(!finished&&popup?.closed)cancel();},1000);
+ // OAuth isolation headers can report popup.closed before login finishes.
+ // Keep listening until a valid callback, explicit cancellation or timeout.
  timer=setTimeout(()=>{if(!finished){finished=true;cleanup();reject(new Error('The Withings window timed out. Keep Form open and unlocked, then try again.'));}},600000);
  });
 }
