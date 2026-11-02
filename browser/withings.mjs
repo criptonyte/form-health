@@ -26,7 +26,11 @@ export async function fetchMeasurements(tokens,timezone){let offset=0,finished=f
  // A form-body bearer token avoids the Authorization-header CORS preflight.
  // The token stays in the HTTPS request body, never in a URL or browser history.
  const body=await post(MEASURE_URL,{action:'getmeas',access_token:tokens.access_token,meastypes:'1,6',category:'1',startdate:String(start),enddate:String(end),offset:String(offset)});
- for(const g of body.measuregrps||[]){const w=g.measures?.find(m=>m.type===1),fat=g.measures?.find(m=>m.type===6);if(!w)continue;const value=w.value*10**w.unit;if(!Number.isFinite(value)||value<20||value>400)continue;result.push({id:`withings:${tokens.userid}:${g.grpid}`,kind:'weight',date:dateAt(new Date(g.date*1000),timezone),value:Math.round(value*1000)/1000,bodyFat:fat?fat.value*10**fat.unit:null,label:'',source:'withings',createdAt:g.date*1000});}
+ for(const g of body.measuregrps||[]){const w=g.measures?.find(m=>m.type===1),fat=g.measures?.find(m=>m.type===6);const weight=w?w.value*10**w.unit:null,rawFat=fat?fat.value*10**fat.unit:null,bodyFat=Number.isFinite(rawFat)&&rawFat>0&&rawFat<100?rawFat:null;
+ const common={date:dateAt(new Date(g.date*1000),timezone),label:'',source:'withings',createdAt:g.date*1000};
+ if(Number.isFinite(weight)&&weight>=20&&weight<=400)result.push({...common,id:`withings:${tokens.userid}:${g.grpid}`,kind:'weight',value:Math.round(weight*1000)/1000,bodyFat});
+ else if(bodyFat!==null)result.push({...common,id:`withings:${tokens.userid}:${g.grpid}:fat`,kind:'bodyFat',value:Math.round(bodyFat*1000)/1000});
+ }
  if(!body.more){finished=true;break;}if(body.offset===offset)throw new Error('Withings returned an incomplete page. Try syncing again.');offset=body.offset;
  }if(!finished)throw new Error('Too many measurement pages. Nothing was replaced.');return result;
 }

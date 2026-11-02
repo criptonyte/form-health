@@ -24,6 +24,35 @@ export function weightAnalysis(entries: Entry[], days: number, today: string) {
 }
 export function demoEntries(today: string): Entry[] {
  const end=Date.parse(today+'T12:00:00Z');const result:Entry[]=[];
- for(let i=0;i<90;i++){if(i%6===2)continue;result.push({id:'demo-'+i,kind:'weight',date:new Date(end-(89-i)*86400000).toISOString().slice(0,10),value:Math.round((94.4-i*.046+Math.sin(i*.76)*.38+Math.cos(i*.29)*.18)*100)/100,label:'',source:'demo'});}
+ for(let i=0;i<90;i++){if(i%6===2)continue;result.push({id:'demo-'+i,kind:'weight',date:new Date(end-(89-i)*86400000).toISOString().slice(0,10),value:Math.round((94.4-i*.046+Math.sin(i*.76)*.38+Math.cos(i*.29)*.18)*100)/100,bodyFat:i%5===0?null:Math.round((29-i*.018+Math.sin(i*.9)*.8)*10)/10,label:'',source:'demo'});}
  return result;
+}
+
+export type BodyMetric='weight'|'bodyFat';
+const DAY=86400000;
+export const median=(values:number[])=>{const v=[...values].sort((a,b)=>a-b);return v.length%2?v[(v.length-1)/2]:(v[v.length/2-1]+v[v.length/2])/2;};
+export function splitAtGaps<T extends {date:string}>(points:T[],maxGap=3):T[][]{
+ const segments:T[][]=[];for(const p of points){const last=segments.at(-1);if(!last||Date.parse(p.date)-Date.parse(last.at(-1)!.date)>maxGap*DAY)segments.push([p]);else last.push(p);}return segments;
+}
+export function bodyAnalysis(entries:Entry[],days:number,today:string,metric:BodyMetric='weight'){
+ const end=Date.parse(today),start=end-(days-1)*DAY,window=metric==='weight'?7:14,maxGap=metric==='weight'?3:7;
+ const groups=new Map<string,number[]>();
+ for(const e of entries){const value=metric==='weight'?(e.kind==='weight'?e.value:null):e.kind==='bodyFat'?e.value:e.kind==='weight'?e.bodyFat:null;
+ if(typeof value!=='number'||!Number.isFinite(value)||value<=0||value>(metric==='weight'?400:99.999)||e.date>today||Date.parse(e.date)<end-89*DAY)continue;
+ groups.set(e.date,[...(groups.get(e.date)||[]),value]);}
+ const reduce=(v:number[])=>metric==='weight'?v.reduce((s,n)=>s+n,0)/v.length:median(v);
+ const all=[...groups].map(([date,v])=>({date,value:reduce(v)})).sort((a,b)=>a.date.localeCompare(b.date));
+ const daily=all.filter(p=>Date.parse(p.date)>=start);
+ const rolling=daily.map(p=>{const values=all.filter(q=>q.date<=p.date&&Date.parse(q.date)>=Date.parse(p.date)-(window-1)*DAY).map(q=>q.value);return{...p,smooth:values.length>=3?reduce(values):null,count:values.length};});
+ const current=all.filter(p=>Date.parse(p.date)>=end-(window-1)*DAY),previous=all.filter(p=>Date.parse(p.date)>=end-(2*window-1)*DAY&&Date.parse(p.date)<end-(window-1)*DAY);
+ const currentValue=current.length>=3?reduce(current.map(p=>p.value)):null,previousValue=previous.length>=3?reduce(previous.map(p=>p.value)):null;
+ const delta=currentValue!==null&&previousValue!==null?currentValue-previousValue:null;
+ const gaps=[] as {from:string;to:string;missing:number}[];
+ for(let i=1;i<daily.length;i++){const missing=(Date.parse(daily[i].date)-Date.parse(daily[i-1].date))/DAY-1;if(missing>=maxGap)gaps.push({from:daily[i-1].date,to:daily[i].date,missing});}
+ const values=all.map(p=>p.value);const min=values.length?Math.min(...values):0,max=values.length?Math.max(...values):1;
+ const rawStep=Math.max((max-min+.6)/4,.5),step=[.5,1,2,2.5,5,10,20,25,50].find(v=>v>=rawStep)??Math.ceil(rawStep/10)*10;
+ const low=Math.max(0,Math.floor((min-.3)/step)*step),high=low+Math.max(4,Math.ceil((max+.3-low)/step))*step;
+ const ticks=Array.from({length:Math.round((high-low)/step)+1},(_,i)=>high-i*step);
+ return{metric,window,maxGap,daily,rolling,all,current,previous,currentValue,previousValue,delta,gaps,low,high,ticks,latest:daily.at(-1)??null,age:daily.length?Math.round((end-Date.parse(daily.at(-1)!.date))/DAY):null,
+  smoothSegments:splitAtGaps(rolling.filter((p):p is typeof p&{smooth:number}=>p.smooth!==null),maxGap),rawSegments:splitAtGaps(daily,maxGap)};
 }

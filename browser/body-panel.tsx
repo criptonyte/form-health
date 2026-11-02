@@ -1,0 +1,53 @@
+import {useEffect,useMemo,useRef,useState} from 'react';
+import {Activity,ArrowDownLeft,ArrowRight,Check,ChevronLeft,ChevronRight,CircleHelp,RefreshCw,Scale} from 'lucide-react';
+import {bodyAnalysis,type BodyMetric,type Entry} from './analysis';
+const number=(n:number|null,d=1)=>n===null?'—':n.toLocaleString('en-AU',{minimumFractionDigits:d,maximumFractionDigits:d});
+const date=(s:string)=>new Date(s+'T12:00:00Z').toLocaleDateString('en-AU',{day:'numeric',month:'short',timeZone:'UTC'});
+const signed=(n:number)=>`${n>0?'+':n<0?'−':''}${number(Math.abs(n))}`;
+type Props={entries:Entry[];today:string;days:number;setDays:(n:number)=>void;connected:boolean;busy:boolean;onSync:()=>void;onConnect:()=>void;demo:boolean};
+export default function BodyPanel({entries,today,days,setDays,connected,busy,onSync,onConnect,demo}:Props){
+ const [metric,setMetric]=useState<BodyMetric>('weight'),[detail,setDetail]=useState(false);
+ const a=useMemo(()=>bodyAnalysis(entries,days,today,metric),[entries,days,today,metric]);
+ const fat=metric==='bodyFat',unit=fat?'%':'kg',smoothLabel=fat?'14-day median':'7-day average';
+ const delta=a.delta===null?null:Math.round(a.delta*10)/10;
+ const direction=delta===null?'More readings will clarify the direction':Math.abs(delta)<.1?'Recent readings are similar':delta<0?`Recent ${fat?'estimate':'average'} is lower`:`Recent ${fat?'estimate':'average'} is higher`;
+ return <section className={'body-panel '+(fat?'body-fat':'')} aria-label="Body trends">
+  <div className="body-controls"><div className="metric-switch" role="group" aria-label="Body measurement">{(['weight','bodyFat'] as const).map(m=><button key={m} aria-pressed={metric===m} onClick={()=>setMetric(m)}>{m==='weight'?'Weight':'Body fat'}{m==='bodyFat'&&<span>estimate</span>}</button>)}</div><button className="body-sync" onClick={connected?onSync:onConnect} disabled={busy}><RefreshCw size={16} className={busy?'spin':''}/>{busy?'Syncing…':connected?'Sync':'Connect'}</button></div>
+  <div className="body-stats">
+   <div className="body-stat"><p>{fat?'Latest estimate':'Latest daily reading'}</p><strong>{number(a.latest?.value??null)}<small>{unit}</small></strong><span>{a.latest?`${date(a.latest.date)}${a.age!==null&&a.age>0?` · ${a.age} ${a.age===1?'day':'days'} ago`:''}`:'No readings in this period'}</span></div>
+   <div className="body-stat emphasis"><p>{smoothLabel}</p><strong>{number(a.currentValue)}<small>{unit}</small></strong><span>{a.current.length} of {a.window} days measured{a.current.length<3?' · need 3+':''}</span></div>
+  </div>
+  <div className="direction-card" role="status"><div className="direction-icon">{delta!==null&&delta<0?<ArrowDownLeft size={21}/>:<Activity size={21}/>}</div><div><h2>{direction}</h2><p>{delta===null?`A comparison needs at least 3 measured days in each of the last two ${fat?'14-day':'7-day'} periods.`:`${signed(delta)} ${fat?'percentage points':'kg'} vs the previous ${a.window} days · ${a.current.length} days vs ${a.previous.length} days measured.`}</p></div></div>
+  {fat&&<p className="body-context"><CircleHelp size={16}/><span>Body fat is a scale estimate. Hydration can move it around; the median reduces isolated spikes, but does not remove measurement error. <a href="https://support.withings.com/hc/en-us/articles/218970667-Body-Body-Composition-Accuracy-Issues" target="_blank" rel="noreferrer">About these estimates</a></span></p>}
+  <div className="body-chart card">
+   <div className="body-chart-title"><div><h2>{fat?'Body fat over time':'Weight over time'}</h2><p>{a.daily.length} measured {a.daily.length===1?'day':'days'} in the last {days} days</p></div><span className="chart-unit">{unit}</span></div>
+   <div className="period-switch" aria-label="Analysis period">{[30,60,90].map(n=><button key={n} aria-pressed={days===n} className={days===n?'selected':''} onClick={()=>setDays(n)}>{n} days</button>)}</div>
+   <div className="body-chart-key"><span><i/>{smoothLabel}</span><span><b/>Daily {fat?'estimate':'reading'}</span><button aria-pressed={detail} onClick={()=>setDetail(!detail)}>{detail&&<Check size={13}/>}Daily detail</button></div>
+   <BodyChart key={metric+days} analysis={a} today={today} days={days} detail={detail}/>
+   <div className="coverage-note">{a.gaps.length?<><span className="gap-symbol"/>Longest gap: {Math.max(...a.gaps.map(g=>g.missing))} days without readings. Gaps stay blank.</>:a.daily.length?<>Missing days are not filled in. Tap a point to inspect it.</>:<>Sync Withings to check for {fat?'body fat estimates':'weight readings'}.</>}</div>
+   <details className="chart-method"><summary>How to read this chart</summary><p>{fat?'Each dot is the median of that day’s body fat estimates. The line is the trailing 14-calendar-day median.':'Each dot averages the readings taken that day. The line is the trailing 7-calendar-day average.'} A line value needs at least 3 measured days. Lines stop across gaps longer than {a.maxGap} days. The vertical scale stays the same across 30, 60 and 90 days, using your available 90-day history.</p><p>Recent comparison: {date(new Date(Date.parse(today)-(a.window-1)*86400000).toISOString().slice(0,10))}–{date(today)} versus {date(new Date(Date.parse(today)-(2*a.window-1)*86400000).toISOString().slice(0,10))}–{date(new Date(Date.parse(today)-a.window*86400000).toISOString().slice(0,10))}. {fat?'Changes are percentage points, not percent weight loss.':'A scale-weight change does not establish fat loss.'}</p>{demo&&<p>These are sample readings, not your health data.</p>}</details>
+  </div>
+  {!a.daily.length&&<div className="body-empty"><Scale size={25}/><h3>{fat?'No body fat estimates received yet.':'Your Withings readings will appear here.'}</h3><p>{fat?'Some weigh-ins include weight only. Sync again to import any body fat estimates already available in Withings.':'Connect your Withings account, then sync your last 90 days.'}</p><button className="button secondary" disabled={busy} onClick={connected?onSync:onConnect}>{connected?'Sync Withings':'Connect Withings'}<ArrowRight size={16}/></button></div>}
+ </section>;
+}
+function BodyChart({analysis:a,today,days,detail}:{analysis:ReturnType<typeof bodyAnalysis>;today:string;days:number;detail:boolean}){
+ const ref=useRef<HTMLDivElement>(null),[width,setWidth]=useState(360),[selected,setSelected]=useState<number|null>(null);
+ useEffect(()=>{if(!ref.current)return;const observer=new ResizeObserver(([entry])=>setWidth(Math.max(240,Math.round(entry.contentRect.width))));observer.observe(ref.current);return()=>observer.disconnect();},[]);
+ const W=width,H=width<600?240:280,L=43,R=14,T=16,B=32,start=Date.parse(today)-(days-1)*86400000;
+ const x=(s:string)=>L+(Date.parse(s)-start)/((days-1)*86400000)*(W-L-R),y=(v:number)=>T+(a.high-v)/(a.high-a.low)*(H-T-B);
+ const target=selected===null?null:a.rolling[selected],fat=a.metric==='bodyFat',unit=fat?'%':'kg';
+ const pick=(event:React.PointerEvent<SVGSVGElement>)=>{const bounds=event.currentTarget.getBoundingClientRect(),pos=(event.clientX-bounds.left)/bounds.width*W;let closest=0;a.rolling.forEach((p,i)=>{if(Math.abs(x(p.date)-pos)<Math.abs(x(a.rolling[closest].date)-pos))closest=i;});if(a.rolling.length)setSelected(closest);};
+ if(!a.daily.length)return <div className="body-plot" ref={ref}><div className="body-plot-empty"><Activity size={28}/><p>No {fat?'body fat':'weight'} readings in this period.</p></div></div>;
+ return <div className="body-plot" ref={ref}>
+  <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${fat?'Body fat':'Weight'}: ${a.daily.length} measured days over ${days} days. Gaps are left blank.`} onPointerUp={pick} onPointerMove={e=>{if(e.pointerType==='mouse')pick(e);}} onPointerLeave={e=>{if(e.pointerType==='mouse')setSelected(null);}}>
+   {a.ticks.map(v=><g key={v}><line x1={L} x2={W-R} y1={y(v)} y2={y(v)} stroke="#e0e7df" strokeDasharray="3 5"/><text x={L-9} y={y(v)+4} textAnchor="end" fill="#6c7b70" fontSize="11">{number(v)}</text></g>)}
+   {a.gaps.map(g=><rect key={g.from} x={x(g.from)+3} y={T} width={Math.max(0,x(g.to)-x(g.from)-6)} height={H-T-B} fill="#f2f4f1"/>)}
+   {detail&&a.rawSegments.map((segment,i)=><polyline key={'raw'+i} points={segment.map(p=>`${x(p.date)},${y(p.value)}`).join(' ')} fill="none" stroke="#a9bbb0" strokeWidth="1.3"/>)}
+   {a.smoothSegments.map((segment,i)=>segment.length>1?<polyline key={i} points={segment.map(p=>`${x(p.date)},${y(p.smooth)}`).join(' ')} fill="none" stroke="#275e49" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round"/>:<circle key={i} cx={x(segment[0].date)} cy={y(segment[0].smooth)} r="3.5" fill="#275e49"/>)}
+   {a.daily.map((p,i)=><circle key={p.date} cx={x(p.date)} cy={y(p.value)} r={detail?3.3:2.5} fill={i===a.daily.length-1?'#275e49':'#91ab9a'} stroke="white" strokeWidth={i===a.daily.length-1?1.5:.7}/>) }
+   {Array.from({length:width<600?3:5},(_,i)=>{const count=width<600?2:4,d=new Date(start+(days-1)*86400000*i/count).toISOString().slice(0,10);return <text key={i} x={x(d)} y={H-5} textAnchor={i===0?'start':i===count?'end':'middle'} fill="#6c7b70" fontSize="11">{date(d)}</text>;})}
+   {target&&<g><line x1={x(target.date)} x2={x(target.date)} y1={T} y2={H-B} stroke="#547c66" strokeDasharray="3 4"/><circle cx={x(target.date)} cy={y(target.value)} r="5" fill="#275e49" stroke="white" strokeWidth="2"/></g>}
+  </svg>
+  {!!a.daily.length&&<div className={'reading-inspector '+(target?'selected':'')} aria-live="polite"><div className="inspector-controls"><button aria-label="Previous reading" disabled={!target||selected===0} onClick={()=>setSelected(Math.max(0,(selected??a.rolling.length)-1))}><ChevronLeft size={17}/></button><span>{target?date(target.date):'Tap the chart'}</span><button aria-label="Next reading" disabled={selected===a.rolling.length-1} onClick={()=>setSelected(Math.min(a.rolling.length-1,(selected??-1)+1))}><ChevronRight size={17}/></button></div><p>{target?<><b>{number(target.value)} {unit}</b><span>{target.smooth===null?'Not enough recent readings to smooth':`${fat?'14-day median':'7-day average'} ${number(target.smooth)} ${unit} · ${target.count} days`}</span></>:<span>Inspect a daily reading and its smoothed value.</span>}</p></div>}
+ </div>;
+}
