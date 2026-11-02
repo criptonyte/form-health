@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createVault} from '../browser/vault.mjs';
-function memoryStorage(){let record=null;return{async read(){return structuredClone(record);},async write(value,revision){assert.equal(record?.revision??0,revision);record=structuredClone(value);},saved(){return record;}};}
+function memoryStorage(){let record=null,deviceKey=null;return{async readDeviceKey(){return structuredClone(deviceKey);},async writeDeviceKey(value){deviceKey=structuredClone(value);},async read(){return structuredClone(record);},async write(value,revision){assert.equal(record?.revision??0,revision);record=structuredClone(value);},saved(){return record;}};}
 const password='local-test-passphrase';
 test('vault encrypts records and credentials, rejects wrong passphrases and restores backups',async()=>{
  const store=memoryStorage(),first=createVault(store);await first.create(password);
@@ -17,4 +17,12 @@ test('failed writes do not change the in-memory records',async()=>{
 test('serialises concurrent changes and rejects stale writes from another tab',async()=>{
  const storage=memoryStorage(),a=createVault(storage),b=createVault(storage);await a.create(password);await b.unlock(password);
  await Promise.all([a.mutate(d=>{d.preferences.goal=84;}),a.mutate(d=>{d.preferences.water=2750;})]);assert.equal(a.snapshot().preferences.goal,84);assert.equal(a.snapshot().preferences.water,2750);await assert.rejects(b.mutate(d=>{d.preferences.goal=70;}));assert.equal((await storage.read()).revision,3);
+});
+
+test('automatic opening preserves records and connection, migrates old vault once, and exports portable password backups',async()=>{
+ const store=memoryStorage(),old=createVault(store);await old.create(password);await old.mutate(d=>{d.preferences.goal=79;d.withings={clientId:'example-id',clientSecret:'example-secret',tokens:{access_token:'access',refresh_token:'refresh',expiresAt:Date.now()+10000}};});
+ const migrated=createVault(store);assert.equal(await migrated.open(),false);await migrated.unlock(password);await migrated.remember();
+ const reopened=createVault(store);assert.equal(await reopened.open(),true);assert.equal(reopened.snapshot().preferences.goal,79);assert.equal(reopened.snapshot().withings.tokens.refresh_token,'refresh');
+ const backup=await reopened.backup('portable-backup-password');const restored=createVault(memoryStorage());await restored.restore(backup,'portable-backup-password');assert.equal(restored.snapshot().preferences.goal,79);
+ const freshStore=memoryStorage(),fresh=createVault(freshStore);assert.equal(await fresh.open(),true);assert.equal(await createVault(freshStore).open(),true);
 });
