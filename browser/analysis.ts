@@ -38,7 +38,7 @@ export function bodyAnalysis(entries:Entry[],days:number,today:string,metric:Bod
  const end=Date.parse(today),start=end-(days-1)*DAY,window=metric==='weight'?7:14,maxGap=metric==='weight'?3:7;
  const groups=new Map<string,number[]>();
  for(const e of entries){const value=metric==='weight'?(e.kind==='weight'?e.value:null):e.kind==='bodyFat'?e.value:e.kind==='weight'?e.bodyFat:null;
- if(typeof value!=='number'||!Number.isFinite(value)||value<=0||value>(metric==='weight'?400:99.999)||e.date>today||Date.parse(e.date)<end-89*DAY)continue;
+ if(typeof value!=='number'||!Number.isFinite(value)||value<=0||(metric==='weight'?value>400:value>=100)||e.date>today||Date.parse(e.date)<end-89*DAY)continue;
  groups.set(e.date,[...(groups.get(e.date)||[]),value]);}
  const reduce=(v:number[])=>metric==='weight'?v.reduce((s,n)=>s+n,0)/v.length:median(v);
  const all=[...groups].map(([date,v])=>({date,value:reduce(v)})).sort((a,b)=>a.date.localeCompare(b.date));
