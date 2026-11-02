@@ -29,3 +29,10 @@ test('imports body-fat-only groups and omits invalid estimates without inventing
  const original=globalThis.fetch;globalThis.fetch=async()=>Response.json({status:0,body:{more:0,measuregrps:[{grpid:11,date:Math.floor(Date.now()/1000),measures:[{type:6,value:275,unit:-1}]},{grpid:12,date:Math.floor(Date.now()/1000),measures:[{type:1,value:950,unit:-1},{type:6,value:0,unit:0}]},{grpid:13,date:Math.floor(Date.now()/1000),measures:[{type:6,value:100,unit:0}]}]}});
  try{const rows=await fetchMeasurements({access_token:'test-token',userid:'test-user'},'Etc/UTC');assert.equal(rows.length,2);assert.equal(rows[0].kind,'bodyFat');assert.equal(rows[0].value,27.5);assert.equal(rows[1].kind,'weight');assert.equal(rows[1].bodyFat,null);}finally{globalThis.fetch=original;}
 });
+
+test('uses device timezone over a legacy preference and regroups only timestamped Withings readings',async()=>{
+ const vault=createVault(storage()),api=createLocalApi(vault),today=dateKey();await vault.create(password);
+ const measuredAt=Date.parse(today+'T12:00:00Z');
+ await vault.mutate(d=>{d.preferences.timezone='Pacific/Kiritimati';d.entries.push({id:'zone-scale',kind:'weight',date:'2000-01-01',value:90,label:'',source:'withings',createdAt:measuredAt},{id:'zone-water',kind:'water',date:today,value:250,label:'',source:'manual',createdAt:measuredAt});});
+ const result=await api('data');assert.equal(result.preferences.timezone,Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC');assert.equal(result.entries.find(e=>e.id==='zone-scale').date,dateKey(new Date(measuredAt)));assert.equal(result.entries.find(e=>e.id==='zone-water').date,today);
+});
