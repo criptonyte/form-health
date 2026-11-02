@@ -16,7 +16,11 @@ export function createLocalApi(engine){return async function api(path,body,metho
  if(path==='withings/disconnect'){if(remoteBusy)throw new VaultError('Finish the current Withings operation first.');await engine.mutate(data=>{data.withings=null;});return{ok:true};}
  if(path==='withings/connect'){
  if(remoteBusy)throw new VaultError('A Withings operation is already running.');const c=engine.snapshot().withings;if(!c)throw new VaultError('Save your developer app credentials first.');remoteBusy=true;
- authorisationController=new AbortController();try{const auth=await authoriseInPopup(c,authorisationController.signal);try{const tokens=await requestTokens(c,{grant_type:'authorization_code',code:auth.code,redirect_uri:auth.redirectUri});await engine.mutate(data=>{data.withings={...data.withings,tokens};});auth.complete();return{ok:true};}catch(error){auth.complete(error.message);throw error;}}finally{remoteBusy=false;authorisationController=null;}
+ authorisationController=new AbortController();let state;
+ try{await authoriseInPopup(c,authorisationController.signal,{save:async pending=>{state=pending.state;await engine.mutate(d=>{d.withings.pendingAuth=pending;});},read:async nonce=>{await engine.open();const pending=engine.snapshot().withings?.pendingAuth;return pending?.state===nonce?pending:null;}});await engine.open();return{ok:true};}
+ catch(e){await engine.open().then(()=>engine.mutate(d=>{if(d.withings?.pendingAuth?.state===state&&d.withings.pendingAuth.status!=='saved')d.withings.pendingAuth.status='cancelled';})).catch(()=>{});throw e;}
+ finally{remoteBusy=false;authorisationController=null;}
+
  }
  if(path==='withings/sync'){
  if(remoteBusy)throw new VaultError('A Withings operation is already running.');const data=engine.snapshot(),c=data.withings;if(!c?.tokens)throw new VaultError('Connect your Withings account first.');remoteBusy=true;

@@ -25,9 +25,10 @@ export default function Dashboard(){
  const calories=foods.reduce((s,e)=>s+e.value,0),water=waters.reduce((s,e)=>s+e.value,0);
  async function refresh(){const d=await api('data');setEntries(d.entries);setPrefs(d.preferences);setConn(d.withings);setReady(true);return d;}
  useEffect(()=>{vault.open().then(async(open:boolean)=>{setVaultExists(true);if(open){const d=await refresh();setDemo(!d.entries.some((e:Entry)=>e.kind==='weight'||e.kind==='bodyFat')&&!d.withings.connected);}else{setDemo(true);setModal('vault');}}).catch((e:Error)=>setError(e.message)).finally(()=>setLoading(false));
+  const resume=()=>{if(document.visibilityState==='visible'&&!isRemoteBusy())vault.open().then((open:boolean)=>{if(open)refresh().catch(()=>{});}).catch(()=>{});};document.addEventListener('visibilitychange',resume);
   const fn=(e:Event)=>{e.preventDefault();setInstallEvent(e);};window.addEventListener('beforeinstallprompt',fn);
   if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-  return()=>window.removeEventListener('beforeinstallprompt',fn);
+  return()=>{window.removeEventListener('beforeinstallprompt',fn);document.removeEventListener('visibilitychange',resume);};
  },[]);
  useEffect(()=>{if(conn.connected&&navigator.onLine&&(!conn.syncedAt||Date.now()-conn.syncedAt>3600000)&&!syncAttempt.current){syncAttempt.current=true;sync(true);}},[conn.connected,conn.syncedAt]);
  useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(''),6000);return()=>clearTimeout(t);},[toast]);
