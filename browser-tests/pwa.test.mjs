@@ -14,4 +14,5 @@ test('Form service worker leaves sibling apps alone',async()=>{
 test('font binary and licence are bundled locally and precached for offline use',async()=>{
  const root=new URL('../browser-public/',import.meta.url),font=await readFile(new URL('fonts/inter-latin-wght-5.3.0.woff2',root));assert.equal(font.subarray(0,4).toString(),'wOF2');assert.ok(font.length>10000);assert.match(await readFile(new URL('fonts/OFL-Inter.txt',root),'utf8'),/SIL OPEN FONT LICENSE/);
  const sw=await readFile(new URL('sw.js',root),'utf8');assert.match(sw,/fonts\/inter-latin-wght-5\.3\.0\.woff2/);
+ const display=await readFile(new URL('fonts/fraunces-latin-display-v1.woff',root));assert.equal(display.subarray(0,4).toString(),'wOFF');assert.ok(display.length>10000);assert.match(await readFile(new URL('fonts/OFL-Fraunces.txt',root),'utf8'),/SIL OPEN FONT LICENSE/);assert.match(sw,/fonts\/fraunces-latin-display-v1\.woff/);
 });
