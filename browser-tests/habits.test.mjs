@@ -16,7 +16,7 @@ test('weight notice uses latest individual Withings measurement, dated and neutr
 });
 test('weight notice respects dismissal until a new measurement, replaces silently and closes when disabled',async()=>{
  const shown=[],closed=[];const reg={getNotifications:async({tag})=>[{close:()=>closed.push(tag)}],showNotification:async(title,options)=>shown.push({title,options})};
- const rows=[scale('a','2026-11-02',94.6,10)],prefs={weightNotification:true};let key=await reconcileWeightNotification(reg,rows,prefs,'2026-11-02',v=>'badge:'+v);assert.equal(shown.length,1);assert.equal(shown[0].options.badge,'badge:94.6');assert.ok(closed.includes('form-water-today'));
+ const rows=[scale('a','2026-11-02',94.6,10)],prefs={weightNotification:true};let key=await reconcileWeightNotification(reg,rows,prefs,'2026-11-02',v=>'badge:'+v);assert.equal(shown.length,1);assert.equal(shown[0].options.badge,'badge:95');assert.ok(closed.includes('form-water-today'));
  assert.equal(await reconcileWeightNotification(reg,rows,{...prefs,weightNoticeKey:key},'2026-11-02'),null);assert.equal(shown.length,1);
  await reconcileWeightNotification(reg,[...rows,scale('b','2026-11-02',94.7,20)],{...prefs,weightNoticeKey:key},'2026-11-02');assert.equal(shown.length,2);
  await reconcileWeightNotification(reg,rows,{weightNotification:false},'2026-11-02');assert.ok(closed.includes('form-latest-weight'));
