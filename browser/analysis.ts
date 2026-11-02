@@ -46,13 +46,14 @@ export function bodyAnalysis(entries:Entry[],days:number,today:string,metric:Bod
  const rolling=daily.map(p=>{const values=all.filter(q=>q.date<=p.date&&Date.parse(q.date)>=Date.parse(p.date)-(window-1)*DAY).map(q=>q.value);return{...p,smooth:values.length>=3?reduce(values):null,count:values.length};});
  const current=all.filter(p=>Date.parse(p.date)>=end-(window-1)*DAY),previous=all.filter(p=>Date.parse(p.date)>=end-(2*window-1)*DAY&&Date.parse(p.date)<end-(window-1)*DAY);
  const currentValue=current.length>=3?reduce(current.map(p=>p.value)):null,previousValue=previous.length>=3?reduce(previous.map(p=>p.value)):null;
- const delta=currentValue!==null&&previousValue!==null?currentValue-previousValue:null;
+ const comparisonMinimum=metric==='bodyFat'?7:3;
+ const delta=current.length>=comparisonMinimum&&previous.length>=comparisonMinimum&&currentValue!==null&&previousValue!==null?currentValue-previousValue:null;
  const gaps=[] as {from:string;to:string;missing:number}[];
  for(let i=1;i<daily.length;i++){const missing=(Date.parse(daily[i].date)-Date.parse(daily[i-1].date))/DAY-1;if(missing>=maxGap)gaps.push({from:daily[i-1].date,to:daily[i].date,missing});}
  const values=all.map(p=>p.value);const min=values.length?Math.min(...values):0,max=values.length?Math.max(...values):1;
  const rawStep=Math.max((max-min+.6)/4,.5),step=[.5,1,2,2.5,5,10,20,25,50].find(v=>v>=rawStep)??Math.ceil(rawStep/10)*10;
  const low=Math.max(0,Math.floor((min-.3)/step)*step),high=low+Math.max(4,Math.ceil((max+.3-low)/step))*step;
  const ticks=Array.from({length:Math.round((high-low)/step)+1},(_,i)=>high-i*step);
- return{metric,window,maxGap,daily,rolling,all,current,previous,currentValue,previousValue,delta,gaps,low,high,ticks,latest:daily.at(-1)??null,age:daily.length?Math.round((end-Date.parse(daily.at(-1)!.date))/DAY):null,
+ return{metric,window,maxGap,comparisonMinimum,daily,rolling,all,current,previous,currentValue,previousValue,delta,gaps,low,high,ticks,latest:daily.at(-1)??null,age:daily.length?Math.round((end-Date.parse(daily.at(-1)!.date))/DAY):null,
   smoothSegments:splitAtGaps(rolling.filter((p):p is typeof p&{smooth:number}=>p.smooth!==null),maxGap),rawSegments:splitAtGaps(daily,maxGap)};
 }
