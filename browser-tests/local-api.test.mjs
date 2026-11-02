@@ -8,7 +8,7 @@ const password='test-passphrase-long';
 test('saves local records offline and validates dates, values and preferences',async()=>{
  const vault=createVault(storage()),api=createLocalApi(vault),today=dateKey();await assert.rejects(api('data'),/Unlock/);await vault.create(password);
  await vault.mutate(d=>d.entries.push({id:'existing-weight',kind:'weight',date:today,value:90,label:'',source:'manual'}));await assert.rejects(api('records',{kind:'weight',date:today,value:90}),/Manual weight entry/);await api('records',{kind:'food',date:today,value:450,label:'Test salad'});let d=await api('data');assert.equal(d.entries.length,2);
- await assert.rejects(api('records',{kind:'water',date:'2026-02-30',value:90}),/valid date/);await assert.rejects(api('records',{kind:'water',date:today,value:-5}),/between/);await assert.rejects(api('preferences',{goal:85,calories:2000,water:2500,timezone:'not/a-zone'}),/timezone/);
+ await assert.rejects(api('records',{kind:'food',date:'2026-02-30',value:90}),/valid date/);await assert.rejects(api('records',{kind:'food',date:today,value:-5}),/between/);await assert.rejects(api('preferences',{goal:85,calories:2000,water:2500,timezone:'not/a-zone'}),/timezone/);
  const id=d.entries.find(e=>e.kind==='food').id;await api('records',{id},'DELETE');assert.equal((await api('data')).entries.length,1);
  await vault.lock();await vault.unlock(password);assert.equal((await api('data')).entries[0].value,90);
 });
