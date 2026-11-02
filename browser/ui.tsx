@@ -46,7 +46,7 @@ export default function Dashboard(){
   {menu&&<button className="nav-backdrop" aria-label="Dismiss navigation backdrop" onClick={()=>setMenu(false)}/>}
   <aside id="app-navigation" aria-label="Main navigation" className={'sidebar '+(menu?'open':'')}>
    <button className="drawer-close icon-button" aria-label="Close navigation" onClick={()=>setMenu(false)}><X size={22}/></button>
-   <a className="brand" href="./" aria-label="Form home"><span className="brand-symbol"><Activity size={25}/></span>form<span className="brand-dot">.</span></a>
+   <a className="brand" href="./" aria-label="Form home"><span className="brand-symbol"><Activity size={25}/></span><span className="brand-word">form<span className="brand-dot">.</span></span></a>
    <p className="nav-label">YOUR DAILY PICTURE</p>
    <nav>{views.map(v=>{const Icon=icons[v];return <button key={v} className={'nav-item '+(view===v?'active':'')} onClick={()=>go(v)}><Icon size={19}/>{v==='food'?'Calories':titles[v]}{view===v&&<span className="nav-dot"/>}</button>;})}</nav>
    <div className="sidebar-divider"/><p className="nav-label">YOUR SPACE</p>
@@ -86,7 +86,7 @@ export function Overview({entries,logEntries,prefs,days,setDays,today,connected,
 }
 function CalorieCard({entries,today,onLog,onJournal}:{entries:Entry[];today:string;onLog:()=>void;onJournal?:()=>void}){
  const foods=entries.filter(e=>e.kind==='food'&&e.date===today),total=foods.reduce((n,e)=>n+e.value,0);
- return <section className="calorie-card"><div className="calorie-card-heading"><span className="calorie-icon"><Utensils size={19}/></span><p>CALORIE JOURNAL</p><span className="today-pill">Today</span></div><p className="calorie-label">Logged intake</p><strong className="calorie-total">{fmt(total,0)}<small> kcal</small></strong><p className="calorie-count">{foods.length} {foods.length===1?'entry':'entries'} recorded</p><button className="button calorie-log" onClick={onLog}><Plus size={17}/>Log calories</button>{onJournal&&<button className="calorie-history-link" onClick={onJournal}>View journal<ArrowRight size={15}/></button>}</section>;
+ return <section className="calorie-card"><div className="calorie-card-heading"><span className="calorie-icon"><Utensils size={19}/></span><h2>Calorie journal</h2><span className="today-pill">Today</span></div><p className="calorie-label">Logged intake</p><strong className="calorie-total">{fmt(total,0)}<small> kcal</small></strong><p className="calorie-count">{foods.length} {foods.length===1?'entry':'entries'} recorded</p><button className="button calorie-log" onClick={onLog}><Plus size={17}/>Log calories</button>{onJournal&&<button className="calorie-history-link" onClick={onJournal}>View journal<ArrowRight size={15}/></button>}</section>;
 }
 function EntryForm({today,timezone,ready,onSave}:{timezone:string;today:string;ready:boolean;onSave:(b:any)=>Promise<void>}){
  const [error,setError]=useState(''),[saving,setSaving]=useState(false);
