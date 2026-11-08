@@ -59,3 +59,26 @@ h1{font-family:Fraunces,Georgia,serif;font-size:45px;font-weight:400;letter-spac
 .calorie-history .journal-row strong{font-size:14px}
 .calorie-history .delete{color:#81705f;min-width:44px;min-height:44px}
 @media(max-width:700px){.simple-layout .topbar{height:64px;padding:0 16px}.simple-layout .header-actions{gap:2px}.simple-layout main{padding:22px max(16px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}.simple-layout .topbar .brand-word{font-size:34px}}
+
+/* Keep the change summary tied to the selected measurement. */
+.period-direction{display:block;background:#f2f5e9}
+.period-direction .direction-label{font-size:11px;font-weight:500;margin-bottom:6px}
+.period-direction .direction-value{gap:6px;flex-wrap:nowrap}
+.period-direction .direction-value>span{margin-left:4px;font-size:11px}
+.period-direction .direction-detail{max-width:none;text-align:left;font-size:10px;line-height:1.5;margin-top:6px;color:#71885c}
+.period-direction .direction-unavailable{font-size:13px;font-weight:550;line-height:1.4;color:#42673b}
+.period-direction.insufficient{background:#f5f6ef}
+@media(min-width:701px){.period-direction .direction-detail{margin-top:7px}}
+@media(max-width:700px){
+ .simple-layout main{padding-top:17px}
+ .simple-layout .page-heading{margin-bottom:19px}
+ .simple-layout h1{font-size:32px;line-height:1.08}
+ .body-chart{padding:18px 16px 0}
+ .chart-view-controls{margin-bottom:20px}
+ .body-stats{margin-bottom:19px}
+ .body-stat strong{font-size:30px}
+ .body-stat>span{font-size:11px}
+ .period-direction{padding:13px 15px;margin-bottom:19px}
+ .body-chart-key{font-size:11px}
+}
+@media(max-width:350px){.simple-layout h1{font-size:29px}.body-chart{padding-left:12px;padding-right:12px}}
