@@ -5,7 +5,7 @@ import {resolve} from 'node:path';
 await build({configFile:resolve(import.meta.dirname,'vite.config.ts')});
 const root=resolve(import.meta.dirname,'../docs');
 const fonts=(await readdir(root+'/fonts')).filter(p=>/\.woff2?$/.test(p)).map(p=>'fonts/'+p);
-const paths=(await readdir(root+'/assets')).map(p=>'assets/'+p).concat(['index.html','oauth-callback.html','oauth-callback.js','manifest.webmanifest',...fonts]);
+const paths=(await readdir(root+'/assets')).map(p=>'assets/'+p).concat(['index.html','oauth-callback.html','oauth-callback.js','manifest.webmanifest','sw.js',...fonts]);
 const hash=createHash('sha256');for(const p of paths.sort())hash.update(await readFile(root+'/'+p));
 const version='form-local-'+hash.digest('hex').slice(0,12);
 const sw=await readFile(root+'/sw.js','utf8');await writeFile(root+'/sw.js',sw.replace("'form-local-v1'",JSON.stringify(version)));

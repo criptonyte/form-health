@@ -38,3 +38,24 @@ h1{font-family:Fraunces,Georgia,serif;font-size:45px;font-weight:400;letter-spac
 @media(min-width:701px) and (max-width:1100px){h1{font-size:40px}.brand-word{font-size:37px}.brand{gap:10px}.body-history h2{font-size:22px}}
 @media(max-width:700px){.sidebar>.brand{gap:11px}.brand-word{font-size:40px}h1{font-size:35px;line-height:1.12;letter-spacing:-.8px}.page-heading{margin-bottom:23px}.eyebrow{font-size:10px;letter-spacing:.7px;margin-bottom:10px}.subtitle{font-size:12px;margin-top:9px;line-height:1.65}.body-history h2{font-size:24px}.calorie-card-heading>h2{font-size:24px}.calorie-card-heading>p{font-size:10px}.calorie-label{font-size:13px}.modal-content h2{font-size:32px}.modal-description{font-size:14px}.modal-content label{font-size:13px}.setting-toggle small,.setting-note{font-size:12px}.journal-entries h2{font-size:25px}.sidebar .nav-label{font-size:10px}.journal-grid .calorie-card-heading>h2{font-size:23px}}
 @media(max-width:350px){h1{font-size:32px}.calorie-card-heading>h2{font-size:23px}.brand-word{font-size:39px}.modal-content h2{font-size:30px}}
+
+/* One page: chart, calories and readings, with utility actions in the header. */
+.simple-layout .main-wrap{margin-left:0}
+.simple-layout .topbar{height:76px;max-width:1280px;margin:auto;padding:0 36px}
+.simple-layout .topbar .brand{padding:0;margin:0;text-decoration:none}
+.simple-layout .topbar .brand-word{font-size:38px}
+.simple-layout .header-actions{gap:8px}
+.simple-layout .header-actions .icon-button{position:relative;min-width:44px;min-height:44px}
+.simple-layout .header-actions .connected-dot{position:absolute;right:4px;top:5px;width:6px;height:6px}
+.simple-layout main{max-width:1280px;margin:auto;padding:28px 36px 24px}
+.simple-layout .toast{left:50%;bottom:calc(20px + env(safe-area-inset-bottom))}
+.calorie-history{position:relative;z-index:1;margin-top:18px;border-top:1px solid #e8ddcc}
+.calorie-history summary{cursor:pointer;padding:16px 0 0;font-size:13px;font-weight:500;color:#675b4d;min-height:44px}
+.calorie-history summary span{font-weight:400;margin-left:6px;color:#81705f}
+.calorie-history-list{max-height:360px;overflow-y:auto;overscroll-behavior:contain}
+.calorie-history .journal-row{gap:6px;border-color:#e8ddcc;padding:12px 0}
+.calorie-history .journal-row b{font-size:12px}
+.calorie-history .journal-row>div small{font-size:10px;color:#81705f}
+.calorie-history .journal-row strong{font-size:14px}
+.calorie-history .delete{color:#81705f;min-width:44px;min-height:44px}
+@media(max-width:700px){.simple-layout .topbar{height:64px;padding:0 16px}.simple-layout .header-actions{gap:2px}.simple-layout main{padding:22px max(16px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}.simple-layout .topbar .brand-word{font-size:34px}}
