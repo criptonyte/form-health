@@ -118,3 +118,29 @@ h1{font-family:Fraunces,Georgia,serif;font-size:45px;font-weight:400;letter-spac
  .body-stat+.body-stat{padding-left:18px}.body-chart-key{font-size:10px}
  .calorie-history-list{max-height:min(48dvh,420px)}
 }
+
+/* Clear actions and a shorter, easier-to-scan mobile overview. */
+.simple-layout .header-actions{gap:5px}
+.simple-layout .header-action{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:7px 9px;border-radius:9px;color:#667c65;font-size:11px;font-weight:550;white-space:nowrap}
+.simple-layout .header-action:hover,.simple-layout .header-action:focus-visible{background:#edf0e4;color:#315b43}
+.simple-layout .connection-action{background:#eef2e8;color:#3b654c}
+.simple-layout .connection-action .connected-dot{width:6px;height:6px;order:-1}
+.body-plot svg:focus-visible{outline:2px solid #789777;outline-offset:3px;border-radius:5px}
+.body-history .history-empty{margin-top:14px}
+.calorie-history h3{font-size:12px}
+@media(max-width:700px){
+ .simple-layout .header-actions{gap:2px}
+ .simple-layout .header-action{flex-direction:column;gap:2px;min-width:52px;min-height:48px;padding:4px 5px;font-size:10px;line-height:1.15}
+ .simple-layout .connection-action{min-width:66px}
+ .simple-layout .connection-action .connected-dot{position:absolute;order:initial;right:7px;top:4px}
+ .body-chart-title{margin-bottom:9px}
+ .chart-view-controls{margin-bottom:12px}
+ .body-stats{margin-bottom:13px;padding:11px 0 12px}
+ .body-stat strong{margin:4px 0;font-size:30px}
+ .body-chart-key{margin-bottom:5px}
+ .chart-footnote{padding:7px 0 11px}
+ .body-history{padding:18px 18px 8px}
+ .body-history td{padding:10px 0}
+ .calorie-history-list{max-height:none;overflow:visible;touch-action:auto}
+}
+@media(max-width:360px){.simple-layout .topbar .brand-word{font-size:30px}.simple-layout .header-action{min-width:48px;font-size:9px}.simple-layout .connection-action{min-width:61px}}
