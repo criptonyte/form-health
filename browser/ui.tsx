@@ -7,20 +7,23 @@ import {vault} from './vault.mjs';
 import {deviceTimezone} from './timezone.mjs';
 import {callbackUrl} from './withings.mjs';
 import BodyPanel from './body-panel';
+import {completedDayTotals} from './calorie-week';
 import {dismissLegacyNotifications} from './retire-notifications.mjs';
 export type Prefs={goal:number;calories:number;water:number;timezone:string;calorieTracking?:boolean};
 type Conn={configured:boolean;connected:boolean;syncedAt:number|null};
 const defaults:Prefs={goal:85,calories:2000,water:2500,timezone:deviceTimezone(),calorieTracking:true};
 const fmt=(v:number|null,d=1)=>v===null?'—':v.toLocaleString('en-AU',{minimumFractionDigits:d,maximumFractionDigits:d});
 const shortDate=(date:string)=>new Date(date+'T12:00:00Z').toLocaleDateString('en-AU',{day:'numeric',month:'short',timeZone:'UTC'});
+const chartDays=()=>{try{const saved=Number(localStorage.getItem('form-chart-days'));return [30,60,90].includes(saved)?saved:30;}catch{return 30;}};
 export default function Dashboard(){
- const [days,setDays]=useState(90),[entries,setEntries]=useState<Entry[]>([]),[prefs,setPrefs]=useState(defaults),[conn,setConn]=useState<Conn>({configured:false,connected:false,syncedAt:null});
+ const [days,setDays]=useState(chartDays),[entries,setEntries]=useState<Entry[]>([]),[prefs,setPrefs]=useState(defaults),[conn,setConn]=useState<Conn>({configured:false,connected:false,syncedAt:null});
  const [loading,setLoading]=useState(true),[demo,setDemo]=useState(false),[modal,setModal]=useState<'food'|'settings'|'connect'|'install'|'vault'|null>(null),[toast,setToast]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[ready,setReady]=useState(false);
  const [vaultExists,setVaultExists]=useState(false),[installEvent,setInstallEvent]=useState<any>(null);
  const dialog=useRef<HTMLDialogElement>(null),syncAttempt=useRef(false);
  const [,tick]=useState(0);useEffect(()=>{const timer=setInterval(()=>tick(n=>n+1),60000);return()=>clearInterval(timer);},[]);
  const today=dayKey(new Date(),prefs.timezone),tracking=ready&&prefs.calorieTracking!==false;
  const active=useMemo(()=>demo?demoEntries(today):entries,[demo,entries,today]);
+ useEffect(()=>{try{localStorage.setItem('form-chart-days',String(days));}catch{}},[days]);
  async function refresh(){const d=await api('data');setEntries(d.entries);setPrefs(d.preferences);setConn(d.withings);setReady(true);return d;}
  useEffect(()=>{vault.open().then(async(open:boolean)=>{setVaultExists(true);if(open){const d=await refresh();setDemo(!d.entries.some((e:Entry)=>e.kind==='weight'||e.kind==='bodyFat')&&!d.withings.connected);}else{setDemo(true);setModal('vault');}}).catch((e:Error)=>setError(e.message)).finally(()=>setLoading(false));
   const resume=()=>{if(document.visibilityState==='visible'&&!isRemoteBusy())vault.open().then((open:boolean)=>{if(open)refresh().catch(()=>{});}).catch(()=>{});};document.addEventListener('visibilitychange',resume);
@@ -68,7 +71,8 @@ export function Overview({entries,logEntries,prefs,days,setDays,today,connected,
 export function CalorieCard({entries,today,timezone,onLog,onRemove,busy}:{entries:Entry[];today:string;timezone:string;onLog:()=>void;onRemove:(entry:Entry)=>void;busy:boolean}){
  const history=entries.filter(e=>e.kind==='food').sort((a,b)=>b.date.localeCompare(a.date)||(b.loggedAt||'').localeCompare(a.loggedAt||'')||(b.createdAt||0)-(a.createdAt||0));
  const foods=history.filter(e=>e.date===today),total=foods.reduce((n,e)=>n+e.value,0);
- return <section className="calorie-card"><div className="calorie-card-heading"><span className="calorie-icon"><Utensils size={19}/></span><h2>Calorie journal</h2><span className="today-pill">Today</span></div><p className="calorie-label">Today's intake</p><strong className="calorie-total">{fmt(total,0)}<small> kcal</small></strong><p className="calorie-count">{foods.length} {foods.length===1?'entry':'entries'} today</p><button className="button calorie-log" onClick={onLog}><Plus size={17}/>Log calories</button>{history.length>0&&<div className="calorie-history"><h3>Recent calorie entries <span>{history.length}</span></h3><div className="calorie-history-list" tabIndex={0} aria-label="Recent calorie entries">{history.map(e=><div className="journal-row" key={e.id}><div><b>{e.label||'Calories'}</b><small>{e.date===today?'Today':shortDate(e.date)}{e.loggedAt?' · '+e.loggedAt.slice(11,16):e.createdAt?' · '+new Intl.DateTimeFormat('en-AU',{hour:'numeric',minute:'2-digit',timeZone:timezone}).format(new Date(e.createdAt)):''}</small></div><strong>{fmt(e.value,0)}<small> kcal</small></strong><button className="icon-button delete" aria-label="Delete calorie entry" disabled={busy} onClick={()=>onRemove(e)}><Trash2 size={15}/></button></div>)}</div></div>}</section>;
+ const pastWeek=completedDayTotals(history,today);
+ return <section className="calorie-card"><div className="calorie-card-heading"><span className="calorie-icon"><Utensils size={19}/></span><h2>Calorie journal</h2><span className="today-pill">Today</span></div><p className="calorie-label">Today's intake</p><strong className="calorie-total">{fmt(total,0)}<small> kcal</small></strong><p className="calorie-count">{foods.length?`${foods.length} ${foods.length===1?'entry':'entries'} today`:'Nothing logged today'}</p><button className="button calorie-log" onClick={onLog}><Plus size={17}/>Log calories</button>{foods.length>0&&<div className="calorie-history"><h3>Today's entries <span>{foods.length}</span></h3><div className="calorie-history-list" tabIndex={0} aria-label="Today's calorie entries">{foods.map(e=><div className="journal-row" key={e.id}><div><b>{e.label||'Calories'}</b><small>{e.loggedAt?e.loggedAt.slice(11,16):e.createdAt?new Intl.DateTimeFormat('en-AU',{hour:'numeric',minute:'2-digit',timeZone:timezone}).format(new Date(e.createdAt)):'Today'}</small></div><strong>{fmt(e.value,0)}<small> kcal</small></strong><button className="icon-button delete" title="Delete entry" aria-label={`Delete ${fmt(e.value,0)} calorie entry`} disabled={busy} onClick={()=>onRemove(e)}><Trash2 size={17}/></button></div>)}</div></div>}{pastWeek.some(day=>day.count>0)&&<div className="calorie-week"><h3>Previous 7 days</h3><div className="calorie-week-grid">{pastWeek.map(day=><div className="calorie-week-day" key={day.key}><span>{new Date(day.key+'T12:00:00Z').toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'})}</span><strong className={day.count?'':'unlogged'}>{day.count?`${fmt(day.total,0)} kcal`:'No entries'}</strong></div>)}</div></div>}</section>;
 }
 function EntryForm({today,timezone,ready,onSave}:{timezone:string;today:string;ready:boolean;onSave:(b:any)=>Promise<void>}){
  const [error,setError]=useState(''),[saving,setSaving]=useState(false);

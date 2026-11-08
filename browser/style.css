@@ -144,3 +144,17 @@ h1{font-family:Fraunces,Georgia,serif;font-size:45px;font-weight:400;letter-spac
  .calorie-history-list{max-height:none;overflow:visible;touch-action:auto}
 }
 @media(max-width:360px){.simple-layout .topbar .brand-word{font-size:30px}.simple-layout .header-action{min-width:48px;font-size:9px}.simple-layout .connection-action{min-width:61px}}
+
+/* Daily calorie entries stay actionable; completed days are read-only totals. */
+.calorie-history .journal-row{border-color:#ffffff26}
+.calorie-history .delete{min-width:40px;min-height:40px;padding:9px;color:#e0ebd7;background:#ffffff16;border:1px solid #ffffff2b;border-radius:10px;flex-shrink:0}
+.calorie-history .delete:hover{background:#ffffff2a;color:#fff}
+.calorie-history .delete:focus-visible{outline:2px solid #e8edc1;outline-offset:2px}
+.calorie-history .delete:disabled{opacity:.45}
+.calorie-week{position:relative;z-index:1;grid-column:1/-1;border-top:1px solid #ffffff30;margin-top:19px;padding-top:16px}
+.calorie-week h3{font-size:12px;font-weight:600;letter-spacing:0;color:#d8e5c8;margin-bottom:12px}
+.calorie-week-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.calorie-week-day{min-width:0;display:flex;flex-direction:column;gap:4px;padding:10px 11px;border:1px solid #ffffff1e;background:#ffffff0a;border-radius:9px}
+.calorie-week-day span{font-size:10px;color:#c4d5b8;white-space:nowrap}
+.calorie-week-day strong{font-size:13px;font-weight:550;color:#f1f4df;font-variant-numeric:tabular-nums;white-space:nowrap}
+.calorie-week-day strong.unlogged{font-size:11px;font-weight:450;color:#aebfa5}

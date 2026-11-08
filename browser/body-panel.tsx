@@ -37,7 +37,7 @@ function BodyChart({analysis:a,today,days,selected,onSelect}:{analysis:ReturnTyp
   {a.gaps.map(g=><rect key={g.from} x={x(g.from)+3} y={T} width={Math.max(0,x(g.to)-x(g.from)-6)} height={H-T-B} fill="#f2f4f1"/>)}
   {selected&&a.daily.some(p=>p.date===selected)&&<line x1={x(selected)} x2={x(selected)} y1={T} y2={H-B} stroke="#718e76" strokeWidth="1.5" strokeDasharray="3 4"/>}
   {a.smoothSegments.map((segment,i)=>segment.length>1?<polyline key={i} points={segment.map(p=>`${x(p.date)},${y(p.smooth)}`).join(' ')} fill="none" stroke="#275e49" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round"/>:<circle key={i} cx={x(segment[0].date)} cy={y(segment[0].smooth)} r="3.5" fill="#275e49"/>)}
-  {a.daily.map((p,i)=><circle key={p.date} cx={x(p.date)} cy={y(p.value)} r={selected===p.date?7:3.7} fill={selected===p.date?'#254e3b':i===a.daily.length-1?'#275e49':'#91ab9a'} stroke="white" strokeWidth={selected===p.date?2.5:1} className="chart-dot"/>)}
+  {a.daily.map((p,i)=><circle key={p.date} cx={x(p.date)} cy={y(p.value)} r={selected===p.date?7:days===90?2.8:days===60?3.3:3.7} fill={selected===p.date?'#254e3b':i===a.daily.length-1?'#275e49':'#91ab9a'} opacity={selected===p.date||i===a.daily.length-1?1:days===90?.62:days===60?.78:.92} stroke="white" strokeWidth={selected===p.date?2.5:1} className="chart-dot"/>)}
   {Array.from({length:width<600?3:5},(_,i)=>{const count=width<600?2:4,d=new Date(start+(days-1)*86400000*i/count).toISOString().slice(0,10);return <text key={i} x={x(d)} y={H-5} textAnchor={i===0?'start':i===count?'end':'middle'} fill="#6c7b70" fontSize="11">{date(d)}</text>;})}
  </svg></div>;
 }
