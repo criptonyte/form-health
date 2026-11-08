@@ -158,3 +158,38 @@ h1{font-family:Fraunces,Georgia,serif;font-size:45px;font-weight:400;letter-spac
 .calorie-week-day span{font-size:10px;color:#c4d5b8;white-space:nowrap}
 .calorie-week-day strong{font-size:13px;font-weight:550;color:#f1f4df;font-variant-numeric:tabular-nums;white-space:nowrap}
 .calorie-week-day strong.unlogged{font-size:11px;font-weight:450;color:#aebfa5}
+
+/* The wordmark carries the display face; the dashboard uses one clear UI face. */
+.simple-layout .page-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:17px}
+.simple-layout .page-heading h1{font-family:Inter,Arial,sans-serif;font-size:29px;font-weight:620;line-height:1.2;letter-spacing:-.9px}
+.simple-layout .page-heading time{font-size:13px;line-height:1.4;color:#778774;white-space:nowrap}
+.body-chart-title{margin-bottom:0;align-items:center;gap:10px}
+.body-chart-title h2{font-family:Inter,Arial,sans-serif;font-size:19px;font-weight:620;letter-spacing:-.45px}
+.chart-tools{display:flex;align-items:center;gap:8px;margin-left:auto}
+.body-sync{min-height:38px;padding:5px 7px;gap:5px;font-size:11px;border-radius:8px;color:#617c65}
+.body-sync:hover,.body-sync:focus-visible{background:#f0f4ec;color:#315b43}
+.period-switch{padding:2px;gap:1px;border-radius:9px;background:#f1f3ed;border-color:#e7ecdf}
+.period-switch button{min-width:38px;min-height:34px;padding:5px 7px;font-size:11px;border-radius:7px;font-weight:500}
+.period-switch button[aria-pressed=true]{font-weight:650;box-shadow:0 1px 4px #294f3d12}
+.body-stats{margin-top:15px;margin-bottom:12px;padding:13px 0 14px}
+.body-chart-key{justify-content:flex-start;margin:8px 0 0;padding:0;color:#72836f}
+.chart-footnote{padding-top:7px}
+.body-history h2,.calorie-card-heading>h2,.modal-content h2,.journal-entries h2{font-family:Inter,Arial,sans-serif;font-weight:620;letter-spacing:-.5px}
+.body-history h2{font-size:19px}
+.calorie-card-heading>h2{font-size:19px;letter-spacing:-.45px}
+.modal-content h2{font-size:30px}
+.body-history table{margin-top:15px}
+@media(max-width:700px){
+ .simple-layout .page-heading{margin-bottom:15px}
+ .simple-layout .page-heading h1{font-size:25px}
+ .simple-layout .page-heading time{font-size:11px}
+ .body-chart-title h2{font-size:18px}
+ .chart-tools{gap:3px}
+ .body-sync{min-height:38px;padding:5px 4px;font-size:10px}
+ .period-switch button{min-width:35px;min-height:34px;padding:5px 6px;font-size:11px}
+ .body-stats{margin-top:12px;margin-bottom:10px;padding:12px 0 13px}
+ .body-chart-key{font-size:10px;margin-top:7px}
+ .body-history h2{font-size:18px}
+ .calorie-card-heading>h2{font-size:19px}
+}
+@media(max-width:360px){.body-chart-title{flex-wrap:wrap}.chart-tools{margin-left:0;width:100%;justify-content:space-between}.simple-layout .page-heading time{font-size:10px}}

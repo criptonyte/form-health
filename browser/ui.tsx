@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useMemo,useRef,useState,type FormEvent} from 'react';
-import {CircleHelp,HardDrive,Activity,ArrowRight,Check,Copy,Download,ExternalLink,Link2,Loader2,Plus,RefreshCw,Settings2,ShieldCheck,SlidersHorizontal,Trash2,Utensils,X,Scale} from 'lucide-react';
+import {CircleHelp,HardDrive,Activity,ArrowRight,Check,Copy,Download,ExternalLink,Link2,Loader2,Plus,RefreshCw,Settings2,ShieldCheck,SlidersHorizontal,Trash2,Utensils,X} from 'lucide-react';
 import {dayKey,demoEntries,type Entry} from './analysis';
 import {api,isRemoteBusy,cancelWithings} from './local-api.mjs';
 import {vault} from './vault.mjs';
@@ -42,7 +42,7 @@ export default function Dashboard(){
   <div className="main-wrap">
    <header className="topbar"><a className="brand" href="./" aria-label="Form home"><span className="brand-word">form<span className="brand-dot">.</span></span></a><div className="header-actions"><button className="header-action connection-action" aria-label={conn.connected?'Withings connected. Open connections':'Connect Withings'} title="Withings connections" onClick={()=>setModal('connect')}><Link2 size={19}/><span>{conn.connected?'Connected':'Connect'}</span>{conn.connected&&<span className="connected-dot"/>}</button><button className="header-action" aria-label="Install Form" title="Install Form" onClick={()=>setModal('install')}><Download size={19}/><span>Install</span></button><button className="header-action" aria-label="Open preferences" title="Preferences" onClick={()=>setModal('settings')}><SlidersHorizontal size={19}/><span>Settings</span></button></div></header>
    <main>
-    <section className="page-heading"><div><p className="eyebrow">{new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',timeZone:prefs.timezone})}</p><h1>Your daily picture.</h1></div></section>
+    <section className="page-heading"><h1>Today</h1><time dateTime={today}>{new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',timeZone:prefs.timezone})}</time></section>
     {error&&<div className="notice error"><CircleHelp size={18}/><span>{error}</span><button onClick={()=>{setLoading(true);refresh().then(()=>{setError('');setDemo(false);}).catch(e=>setError(e.message)).finally(()=>setLoading(false));}}>Retry</button></div>}
     {loading&&<p className="loading-note"><Loader2 size={14} className="spin"/>Opening your space…</p>}
     {demo&&<div className="demo-banner"><span><span className="demo-dot"/><b>Demo preview</b><span className="demo-description">Sample measurements, not your health data.</span></span><button onClick={()=>{setDemo(false);setModal(!ready?'vault':'connect');}}>Use my data<ArrowRight size={15}/></button></div>}
@@ -65,7 +65,7 @@ export function Overview({entries,logEntries,prefs,days,setDays,today,connected,
  const recent=entries.filter(e=>e.kind==='weight').sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt||0)-(a.createdAt||0)).filter((e,i,all)=>i===0||e.date!==all[i-1].date).slice(1,4);
  return <div className="overview-grid"><BodyPanel entries={entries} days={days} setDays={setDays} today={today} connected={connected} busy={busy} onSync={onSync} onConnect={onConnect} demo={demo}/><aside className="overview-rail" aria-label={tracking?'Daily journal and recent readings':'Recent readings'}>
   {tracking&&<CalorieCard entries={logEntries} today={today} timezone={prefs.timezone} onLog={onLog} onRemove={onRemove} busy={busy}/>}
-  <section className="card body-history"><div className="card-heading"><div><p className="section-kicker">FROM YOUR SCALE</p><h2>Earlier weigh-ins</h2></div><Scale size={19}/></div>{recent.length?<table><thead><tr><th>Date</th><th>Weight</th><th>Body fat</th></tr></thead><tbody>{recent.map(e=><tr key={e.id}><td>{shortDate(e.date)}</td><td>{fmt(e.value)}<small> kg</small></td><td>{typeof e.bodyFat==='number'?fmt(e.bodyFat)+'%':'—'}</td></tr>)}</tbody></table>:<p className="history-empty">Earlier readings appear here after syncing.</p>}<div className="goal-context"><span>Weight goal <b>{fmt(prefs.goal)} kg</b></span><button className="icon-button" aria-label="Edit weight goal" onClick={onPreferences}><Settings2 size={15}/></button></div></section>
+  <section className="card body-history"><div className="card-heading"><h2>Previous readings</h2></div>{recent.length?<table><thead><tr><th>Date</th><th>Weight</th><th>Body fat</th></tr></thead><tbody>{recent.map(e=><tr key={e.id}><td>{shortDate(e.date)}</td><td>{fmt(e.value)}<small> kg</small></td><td>{typeof e.bodyFat==='number'?fmt(e.bodyFat)+'%':'—'}</td></tr>)}</tbody></table>:<p className="history-empty">Earlier readings appear here after syncing.</p>}<div className="goal-context"><span>Weight goal <b>{fmt(prefs.goal)} kg</b></span><button className="icon-button" aria-label="Edit weight goal" onClick={onPreferences}><Settings2 size={15}/></button></div></section>
  </aside></div>;
 }
 export function CalorieCard({entries,today,timezone,onLog,onRemove,busy}:{entries:Entry[];today:string;timezone:string;onLog:()=>void;onRemove:(entry:Entry)=>void;busy:boolean}){
