@@ -3,8 +3,8 @@ import {Activity,ChevronLeft,ChevronRight} from 'lucide-react';
 import {bodyAnalysis,type Entry} from './analysis';
 const number=(n:number|null)=>n===null?'—':n.toLocaleString('en-AU',{minimumFractionDigits:1,maximumFractionDigits:1});
 const date=(s:string)=>new Date(s+'T12:00:00Z').toLocaleDateString('en-AU',{day:'numeric',month:'short',timeZone:'UTC'});
-type Props={entries:Entry[];today:string;days:number;setDays:(n:number)=>void;demo:boolean};
-export default function BodyPanel({entries,today,days,setDays,demo}:Props){
+type Props={entries:Entry[];today:string;days:number;setDays:(n:number)=>void;demo:boolean;connected:boolean};
+export default function BodyPanel({entries,today,days,setDays,demo,connected}:Props){
  const weight=useMemo(()=>bodyAnalysis(entries,days,today,'weight'),[entries,days,today]);
  const fat=useMemo(()=>bodyAnalysis(entries,90,today,'bodyFat'),[entries,today]);
  const [selected,setSelected]=useState<string|null>(null);
@@ -16,15 +16,15 @@ export default function BodyPanel({entries,today,days,setDays,demo}:Props){
  const point=selectedIndex>=0?weight.daily[selectedIndex]:null;
  return <section className="body-panel" aria-label="Measurements"><div className="body-chart card">
   <div className="body-stats"><div className="body-stat"><p>Weight</p><strong>{number(weight.all.at(-1)?.value??null)}<small>kg</small></strong>{!sharedDate&&<span>{weight.all.length?date(weight.all.at(-1)!.date):'No readings yet'}</span>}</div><div className="body-stat"><p>Body fat</p><strong>{number(fat.all.at(-1)?.value??null)}<small>%</small></strong>{!sharedDate&&<span>{fat.all.length?date(fat.all.at(-1)!.date):'No estimate yet'}</span>}</div></div>
-  {sharedDate&&<p className="measurement-date">Latest readings · {date(sharedDate)}</p>}
-  <div className="body-chart-title"><h2>Weight trend</h2><div className="period-switch" role="group" aria-label="Chart period">{[30,60,90].map(n=><button key={n} aria-label={`${n} days`} aria-pressed={days===n} onClick={()=>setDays(n)}>{n}d</button>)}</div></div>
-  <BodyChart analysis={weight} today={today} days={days} selected={selectedDate} onSelect={setSelected}/>
-  <div className="body-chart-key"><span><i/>7-day average</span><span><b/>Weigh-ins</span></div>
-  <div className="point-slot">{point?<div className="point-nav" aria-live="polite"><div className="point-reading"><span>{date(point.date)}</span><strong>{number(point.value)} kg</strong></div><div className="point-nav-actions"><button aria-label="Previous reading" disabled={selectedIndex<=0} onClick={()=>setSelected(weight.daily[selectedIndex-1].date)}><ChevronLeft size={18}/></button><span>{selectedIndex+1} / {weight.daily.length}</span><button aria-label="Next reading" disabled={selectedIndex>=weight.daily.length-1} onClick={()=>setSelected(weight.daily[selectedIndex+1].date)}><ChevronRight size={18}/></button></div></div>:<p className="point-hint">{selectedGap?`${date(selectedDate!)} · No readings`:'No readings in this period'}</p>}</div>
+  {sharedDate&&<p className="measurement-date">Latest readings · {date(sharedDate)}{sharedDate!==today&&<strong className="reading-age">{Math.round((Date.parse(today)-Date.parse(sharedDate))/86400000)} days ago</strong>}</p>}
+  <div className="body-chart-title"><h2>Weight history</h2><div className="period-switch" role="group" aria-label="Chart period">{[30,90].map(n=><button key={n} aria-label={`${n} days`} aria-pressed={days===n} onClick={()=>setDays(n)}>{n} days</button>)}</div></div>
+  <BodyChart analysis={weight} today={today} days={days} selected={selectedDate} onSelect={setSelected} connected={connected||demo}/>
+  <div className="body-chart-key"><span><b/>Daily weight</span><span><i/>7-day average</span></div>
+  <div className="point-slot">{weight.daily.length>0&&<div className="point-nav" aria-live="polite"><button aria-label="Previous reading" disabled={selectedIndex===0} onClick={()=>setSelected(weight.daily[selectedIndex<0?Math.max(0,weight.daily.findIndex(p=>p.date>selectedDate!)-1):selectedIndex-1].date)}><ChevronLeft size={20}/></button><div className="point-reading">{point?<><span>{date(point.date)}</span><strong>{number(point.value)} kg</strong></>:<span>{selectedGap?`${date(selectedDate!)} · No readings`:'No readings in this period'}</span>}</div><button aria-label="Next reading" disabled={selectedIndex>=weight.daily.length-1} onClick={()=>setSelected(weight.daily[selectedIndex<0?Math.max(0,weight.daily.findIndex(p=>p.date>selectedDate!)):selectedIndex+1].date)}><ChevronRight size={20}/></button></div>}</div>
   <div className="chart-footnote">{demo&&<span>Sample data</span>}</div>
  </div></section>;
 }
-function BodyChart({analysis:a,today,days,selected,onSelect}:{analysis:ReturnType<typeof bodyAnalysis>;today:string;days:number;selected:string|null;onSelect:(s:string)=>void}){
+function BodyChart({analysis:a,today,days,selected,onSelect,connected}:{analysis:ReturnType<typeof bodyAnalysis>;today:string;days:number;selected:string|null;onSelect:(s:string)=>void;connected:boolean}){
  const ref=useRef<HTMLDivElement>(null),[width,setWidth]=useState(360);
  useEffect(()=>{if(!ref.current)return;const observer=new ResizeObserver(([entry])=>setWidth(Math.max(240,Math.round(entry.contentRect.width))));observer.observe(ref.current);return()=>observer.disconnect();},[]);
  const W=width,H=width<600?220:310,L=36,R=15,T=26,B=32,start=Date.parse(today)-(days-1)*86400000;
@@ -36,7 +36,7 @@ function BodyChart({analysis:a,today,days,selected,onSelect}:{analysis:ReturnTyp
   const nearest=a.daily.reduce((best,p)=>{const distance=((px-x(p.date))/1.4)**2+(py-y(p.value))**2;return distance<best.distance?{date:p.date,distance}:best;},{date:a.daily[0].date,distance:Infinity});if(nearest.distance<784)onSelect(nearest.date);
  }
  function selectWithKeys(e:KeyboardEvent<SVGSVGElement>){const index=a.daily.findIndex(p=>p.date===selected);if(e.key==='Enter'||e.key===' '){e.preventDefault();onSelect(a.daily.at(-1)!.date);}else if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();onSelect(a.daily[Math.max(0,Math.min(a.daily.length-1,(index<0?a.daily.length-1:index)+(e.key==='ArrowLeft'?-1:1)))].date);}}
- if(!a.daily.length)return <div className="body-plot" ref={ref}><div className="body-plot-empty"><Activity size={28}/><p>No weight readings in this period.</p></div></div>;
+ if(!a.daily.length)return <div className="body-plot" ref={ref}><div className="body-plot-empty"><Activity size={28}/><p>{connected?'No weight readings in this period.':'Connect Withings to see your measurements.'}</p></div></div>;
  return <div className="body-plot" ref={ref}><svg viewBox={`0 0 ${W} ${H}`} role="img" tabIndex={0} aria-label={`Weight chart: ${a.daily.length} weigh-in days over ${days} days. Tap near a dot, or use arrow keys, to inspect a reading.`} onClick={selectNearest} onKeyDown={selectWithKeys}>
   {a.ticks.map(v=><g key={v}><line x1={L} x2={W-R} y1={y(v)} y2={y(v)} stroke="#e8ede6" strokeDasharray="3 5"/><text x={L-9} y={y(v)+4} textAnchor="end" fill="#6c7b70" fontSize="12">{Number.isInteger(v)?v:v.toFixed(1)}</text></g>)}
   <text x={L-9} y={12} textAnchor="end" fill="#6c7b70" fontSize="12">kg</text>

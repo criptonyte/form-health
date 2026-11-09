@@ -292,3 +292,43 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .point-nav-actions span{display:none}
 .point-slot{height:58px}
 @media(max-width:700px){.body-chart-key{font-size:12px}}
+/* Consistent mobile chart controls and settings navigation. */
+.body-chart .body-chart-title{gap:8px;align-items:center;flex-wrap:wrap}
+.body-chart .body-chart-title h2{font-size:15px;letter-spacing:-.2px}
+.body-chart .period-switch{background:transparent;border:0;padding:0;gap:3px;box-shadow:none}
+.body-chart .period-switch button{font-family:inherit;font-size:12px;min-height:44px;min-width:64px;padding:8px;border:0;background:transparent;box-shadow:none;border-radius:8px;color:#5f7364;white-space:nowrap}
+.body-chart .period-switch button[aria-pressed=true]{background:#edf2e9;color:#2e543e;box-shadow:none}
+.body-chart-key{gap:18px;font-size:12px;line-height:1.5;margin:10px 0 8px;flex-wrap:wrap;color:#526b5a}
+.body-chart-key b{width:7px;height:7px;border-radius:50%;background:#739381;opacity:1}
+.body-chart-key i{width:20px;height:3px;background:#275e49}
+.point-slot{height:auto;min-height:52px}
+.point-slot .point-nav{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:5px;width:100%;padding:2px 0;background:transparent;border:0;border-radius:0}
+.point-nav>button{display:grid;place-items:center;min-width:44px;min-height:44px;border-radius:9px;color:#315d46}
+.point-nav>button:hover:not(:disabled){background:#edf2e9}.point-nav>button:disabled{opacity:.25;cursor:default}
+.point-reading{justify-content:center;flex-wrap:wrap;gap:5px;text-align:center;line-height:1.5}
+.point-reading span{font-size:12px}.point-reading strong{font-size:14px}.point-reading span:only-child::after{content:none}
+.reading-age{display:inline-block;font-weight:500;margin-left:8px;color:#536e5b}
+.measurement-date,.body-stat>span{font-size:12px;color:#5e7163}
+.sync-area{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+.page-sync{width:106px;min-height:44px;background:transparent;border-color:#e2e8dc;font-size:13px}
+.sync-status{font-size:11px;color:#5e7364;line-height:1.4;max-width:150px;text-align:right;min-height:16px}
+.update-notice{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#eef3e8;border:1px solid #dce5d5;border-radius:10px;padding:5px 14px;margin-bottom:16px;font-size:13px;color:#34553f}
+.update-notice button{min-height:44px;font-weight:600;text-decoration:underline;text-underline-offset:3px}
+dialog.settings-panel{width:470px;max-width:calc(100vw - 24px);height:min(540px,calc(100dvh - 32px));max-height:calc(100dvh - 32px);padding:0;overflow:hidden}
+.settings-panel .modal-content{display:flex;flex-direction:column;height:100%;padding:0;overflow:hidden}
+.modal-toolbar{flex:none;display:flex;align-items:center;gap:8px;min-height:70px;padding:12px 60px 12px 24px;border-bottom:1px solid #e8ede4}
+.modal-toolbar h2{font-size:22px;margin:0;padding:0;line-height:1.25}
+.modal-back{display:grid;place-items:center;width:44px;min-height:44px;flex-shrink:0;margin-left:-10px;border-radius:8px;color:#345d45}
+.modal-back:hover{background:#eff4ea}.settings-panel .modal-close{top:13px;right:12px;min-width:44px;min-height:44px;z-index:1}
+.settings-panel .modal-body{padding:20px 24px 24px;overflow-y:auto;overflow-x:hidden;min-height:0;overscroll-behavior:contain;scrollbar-width:thin}
+.settings-panel .settings-utilities{margin:0 0 8px}.settings-panel .modal-description{margin:0 0 16px;line-height:1.6;color:#596f5e}
+.settings-panel .fine-print,.settings-panel .setup-step p,.settings-panel .setting-note,.settings-panel .settings-device-note,.settings-panel .connection-status small{color:#5c7260;font-size:12px;line-height:1.6}
+.settings-panel .setup-step b,.settings-panel .setup-step a,.settings-panel .connection-status b{color:#365b43}
+.settings-panel .connection-status{margin:14px 0;padding:14px}.settings-panel .fine-print{margin-top:14px}
+.settings-panel .connection-links{padding:6px;gap:24px}.settings-panel .connection-links button{min-height:44px;color:#5d6f5e}
+.settings-panel .setup-step{margin:12px 0;padding:12px}.settings-panel .modal-body label{color:#526b58}
+.body-history{padding-bottom:20px}.calorie-history-list{overflow:visible;max-height:none;touch-action:pan-y}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #527c5d;outline-offset:3px}
+@media(max-width:700px){.body-chart .body-chart-title h2{font-size:14px}.body-chart .period-switch button{font-size:12px;min-width:61px;padding:8px 7px}.settings-panel .modal-body{padding:18px 20px 22px}.modal-toolbar{padding-left:20px}.page-heading{align-items:flex-start}.page-heading-copy time{line-height:1.5}.calorie-card-heading>h2{white-space:normal}.body-chart-key{font-size:12px}}
+@media(max-width:360px){.body-chart .body-chart-title{gap:4px}.body-chart .body-chart-title h2{font-size:13px}.body-chart .period-switch button{min-width:57px;font-size:11px}.sync-status{max-width:108px}.page-heading-copy time{max-width:170px;display:block}.form-row{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.spin{animation:none}}
