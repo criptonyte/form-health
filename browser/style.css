@@ -280,3 +280,15 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .undo-notice button{min-height:36px;color:#edf3bc;font-weight:600}.undo-notice button:last-child{display:grid;place-items:center;min-width:30px}
 .undo-notice~.toast{bottom:90px}
 @media(max-width:700px){.body-stat strong{font-size:36px}.body-stat p{font-size:14px}.body-chart .period-switch button{min-width:39px;font-size:13px}.body-chart .body-chart-title h2{font-size:14px}.simple-layout .header-actions{gap:0}.simple-layout .header-action{flex-direction:row;font-size:13px}.body-history table{font-size:14px}.body-history th{font-size:12px}}
+
+/* Quiet chart framing and a compact reading navigator. */
+.body-chart-key{font-size:12px;gap:16px;color:#627765}
+.body-chart-key b{background:#739381;opacity:1}
+.point-reading{display:flex;align-items:center;gap:8px;min-width:0}
+.point-reading span{font-size:12px}.point-reading strong{font-size:14px}
+.point-reading span::after{content:' ·';margin-left:5px}
+.point-nav{padding:3px 5px 3px 10px;background:#f6f8f2;border-color:#edf0e7}
+.point-nav-actions button{width:40px;height:40px}
+.point-nav-actions span{display:none}
+.point-slot{height:58px}
+@media(max-width:700px){.body-chart-key{font-size:12px}}

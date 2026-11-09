@@ -54,7 +54,7 @@ export function bodyAnalysis(entries:Entry[],days:number,today:string,metric:Bod
  const gaps=[] as {from:string;to:string;missing:number}[];
  for(let i=1;i<daily.length;i++){const missing=(Date.parse(daily[i].date)-Date.parse(daily[i-1].date))/DAY-1;if(missing>=maxGap)gaps.push({from:daily[i-1].date,to:daily[i].date,missing});}
  const values=all.map(p=>p.value);const min=values.length?Math.min(...values):0,max=values.length?Math.max(...values):1;
- const rawStep=Math.max((max-min+.6)/4,.5),step=[.5,1,2,2.5,5,10,20,25,50].find(v=>v>=rawStep)??Math.ceil(rawStep/10)*10;
+ const rawStep=Math.max((max-min+1)/4,metric==='weight'?1:.5),step=[.5,1,2,2.5,5,10,20,25,50].find(v=>v>=rawStep)??Math.ceil(rawStep/10)*10;
  const low=Math.max(0,Math.floor((min-.3)/step)*step),high=low+Math.max(4,Math.ceil((max+.3-low)/step))*step;
  const ticks=Array.from({length:Math.round((high-low)/step)+1},(_,i)=>high-i*step);
  return{metric,window,maxGap,comparisonMinimum,starting,startingValue,rangeDelta,daily,rolling,all,current,previous,currentValue,previousValue,delta,gaps,low,high,ticks,latest:daily.at(-1)??null,age:daily.length?Math.round((end-Date.parse(daily.at(-1)!.date))/DAY):null,
