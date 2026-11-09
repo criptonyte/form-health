@@ -16,7 +16,7 @@ export default function BodyPanel({entries,today,days,setDays,demo,connected}:Pr
  const point=selectedIndex>=0?weight.daily[selectedIndex]:null;
  return <section className="body-panel" aria-label="Measurements"><div className="body-chart card">
   <div className="body-stats"><div className="body-stat"><p>Weight</p><strong>{number(weight.all.at(-1)?.value??null)}<small>kg</small></strong>{!sharedDate&&<span>{weight.all.length?date(weight.all.at(-1)!.date):'No readings yet'}</span>}</div><div className="body-stat"><p>Body fat</p><strong>{number(fat.all.at(-1)?.value??null)}<small>%</small></strong>{!sharedDate&&<span>{fat.all.length?date(fat.all.at(-1)!.date):'No estimate yet'}</span>}</div></div>
-  {sharedDate&&<p className="measurement-date">Latest readings · {date(sharedDate)}{sharedDate!==today&&<strong className="reading-age">{Math.round((Date.parse(today)-Date.parse(sharedDate))/86400000)} days ago</strong>}</p>}
+  {sharedDate&&<p className="measurement-date">Latest readings · {date(sharedDate)}{sharedDate!==today&&<strong className="reading-age">{Math.round((Date.parse(today)-Date.parse(sharedDate))/86400000)===1?'Yesterday':`${Math.round((Date.parse(today)-Date.parse(sharedDate))/86400000)} days ago`}</strong>}</p>}
   <div className="body-chart-title"><h2>Weight history</h2><div className="period-switch" role="group" aria-label="Chart period">{[30,90].map(n=><button key={n} aria-label={`${n} days`} aria-pressed={days===n} onClick={()=>setDays(n)}>{n} days</button>)}</div></div>
   <BodyChart analysis={weight} today={today} days={days} selected={selectedDate} onSelect={setSelected} connected={connected||demo}/>
   <div className="body-chart-key"><span><b/>Daily weight</span><span><i/>7-day average</span></div>
