@@ -12,7 +12,7 @@ test('vault encrypts records and credentials, rejects wrong passphrases and rest
  const corrupted=JSON.parse(backup);corrupted.ciphertext=corrupted.ciphertext.slice(0,-5)+'AAAAA';await assert.rejects(createVault(memoryStorage()).restore(JSON.stringify(corrupted),password),/Could not unlock/);
 });
 test('failed writes do not change the in-memory records',async()=>{
- const storage=memoryStorage(),vault=createVault(storage);await vault.create(password);const originalWrite=storage.write;storage.write=async()=>{throw new Error('disk full');};await assert.rejects(vault.mutate(d=>{d.preferences.goal=80;}),/disk full/);assert.equal(vault.snapshot().preferences.goal,85);storage.write=originalWrite;
+ const storage=memoryStorage(),vault=createVault(storage);await vault.create(password);const originalWrite=storage.write;storage.write=async()=>{throw new Error('disk full');};await assert.rejects(vault.mutate(d=>{d.preferences.calories=1800;}),/disk full/);assert.equal(vault.snapshot().preferences.calories,2000);storage.write=originalWrite;
 });
 test('serialises concurrent changes and rejects stale writes from another tab',async()=>{
  const storage=memoryStorage(),a=createVault(storage),b=createVault(storage);await a.create(password);await b.unlock(password);
