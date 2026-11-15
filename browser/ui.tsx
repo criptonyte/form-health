@@ -16,7 +16,7 @@ const defaults:Prefs={calories:2000,water:2500,timezone:deviceTimezone()};
 const fmt=(v:number|null,d=1)=>v===null?'—':v.toLocaleString('en-AU',{minimumFractionDigits:d,maximumFractionDigits:d});
 const shortDate=(date:string)=>new Date(date+'T12:00:00Z').toLocaleDateString('en-AU',{day:'numeric',month:'short',timeZone:'UTC'});
 export default function Dashboard(){
- const [days,setDays]=useState(90),[entries,setEntries]=useState<Entry[]>([]),[prefs,setPrefs]=useState(defaults),[conn,setConn]=useState<Conn>({configured:false,connected:false,syncedAt:null});
+ const [entries,setEntries]=useState<Entry[]>([]),[prefs,setPrefs]=useState(defaults),[conn,setConn]=useState<Conn>({configured:false,connected:false,syncedAt:null});
  const [loading,setLoading]=useState(true),[demo,setDemo]=useState(false),[modal,setModal]=useState<'food'|'settings'|'vault'|null>(null),[toast,setToast]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[ready,setReady]=useState(false);
  const [undoEntry,setUndoEntry]=useState<Entry|null>(null),[syncError,setSyncError]=useState('');
  const [syncing,setSyncing]=useState(false),[updateWorker,setUpdateWorker]=useState<ServiceWorker|null>(null),[updating,setUpdating]=useState(false);
@@ -45,7 +45,7 @@ export default function Dashboard(){
  async function remove(e:Entry){if(e.source==='withings')return;setBusy(true);try{await api('records',{id:e.id},'DELETE');await refresh();setUndoEntry(e);}catch(e){setToast((e as Error).message);}finally{setBusy(false);}}
  return <div className="app-shell simple-layout">
   <div className="main-wrap">
-   <header className="topbar"><a className="brand" href="./" aria-label="Forum home"><img className="brand-mark" src="./favicon.svg" alt="" width="32" height="32"/><span className="brand-word">forum</span></a><div className="header-actions"><button className="header-action" aria-label="Open settings" title="Settings" onClick={()=>setModal('settings')}><SlidersHorizontal size={19}/><span>Settings</span></button></div></header>
+   <header className="topbar"><a className="brand" href="./" aria-label="Forum home"><span className="brand-word" aria-hidden="true">form<span className="brand-dot">.</span></span></a><div className="header-actions"><button className="header-action" aria-label="Open settings" title="Settings" onClick={()=>setModal('settings')}><SlidersHorizontal size={19}/><span>Settings</span></button></div></header>
    <main>
     <section className="page-heading"><div className="page-heading-copy"><h1>Today</h1><time dateTime={today}>{new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',timeZone:prefs.timezone})}</time></div><div className="sync-area"><button className="page-sync-action" title={conn.connected?"Sync Withings":"Connect Withings"} onClick={conn.connected?()=>sync():()=>setModal('settings')} disabled={syncing||loading} aria-label={conn.connected?(syncing?'Syncing Withings measurements':'Sync Withings measurements'):'Connect Withings'}><RefreshCw size={17} className={syncing?'spin':''}/>{!conn.connected&&<span>Connect</span>}</button><span className="sync-status" role="status">{loading||!conn.connected?'':syncError?'Sync failed':syncing?'Syncing…':conn.syncedAt?Date.now()-conn.syncedAt<60000?'Synced just now':`Synced ${dayKey(new Date(conn.syncedAt),prefs.timezone)===today?new Date(conn.syncedAt).toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'}):new Date(conn.syncedAt).toLocaleDateString('en-AU',{day:'numeric',month:'short'})}`:'Not synced yet'}</span></div></section>
     {syncError&&<div className="notice error" role="alert"><span>{syncError}</span><button disabled={syncing} onClick={()=>sync()}>Retry sync</button></div>}
@@ -53,7 +53,7 @@ export default function Dashboard(){
     {error&&<div className="notice error"><CircleHelp size={18}/><span>{error}</span><button onClick={()=>{setLoading(true);refresh().then(()=>{setError('');setDemo(false);}).catch(e=>setError(e.message)).finally(()=>setLoading(false));}}>Retry</button></div>}
     {loading&&<p className="loading-note"><Loader2 size={14} className="spin"/>Opening your space…</p>}
     {demo&&<div className="demo-banner"><span><span className="demo-dot"/><b>Demo preview</b><span className="demo-description">Sample measurements, not your health data.</span></span><button onClick={()=>{setDemo(false);setModal(!ready?'vault':'settings');}}>Use my data<ArrowRight size={15}/></button></div>}
-    <Overview entries={active} logEntries={entries} prefs={prefs} days={days} setDays={setDays} today={today} busy={busy} demo={demo} ready={ready} onLog={()=>setModal('food')} onRemove={remove} connected={conn.connected}/>
+    <Overview entries={active} logEntries={entries} prefs={prefs} today={today} busy={busy} demo={demo} ready={ready} onLog={()=>setModal('food')} onRemove={remove} connected={conn.connected}/>
 
     
    </main>
@@ -76,17 +76,15 @@ export default function Dashboard(){
   </div></div></dialog>
  </div>;
 }
-export function Overview({entries,logEntries,prefs,days,setDays,today,busy,demo,ready,onLog,onRemove,connected}:{entries:Entry[];logEntries:Entry[];prefs:Prefs;days:number;setDays:(n:number)=>void;today:string;busy:boolean;demo:boolean;ready:boolean;onLog:()=>void;onRemove:(entry:Entry)=>void;connected:boolean}){
- const recent=entries.filter(e=>e.kind==='weight').sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt||0)-(a.createdAt||0)).filter((e,i,all)=>i===0||e.date!==all[i-1].date).slice(1,4);
- return <div className="overview-grid"><BodyPanel entries={entries} days={days} setDays={setDays} today={today} demo={demo} connected={connected}/><aside className="overview-rail" aria-label="Daily journal and recent readings">
+export function Overview({entries,logEntries,prefs,today,busy,demo,ready,onLog,onRemove,connected}:{entries:Entry[];logEntries:Entry[];prefs:Prefs;today:string;busy:boolean;demo:boolean;ready:boolean;onLog:()=>void;onRemove:(entry:Entry)=>void;connected:boolean}){
+ return <div className="overview-grid">
+  <BodyPanel entries={entries} today={today} demo={demo} connected={connected}/>
   {ready&&<CalorieCard entries={logEntries} today={today} timezone={prefs.timezone} onLog={onLog} onRemove={onRemove} busy={busy}/>}
-  <section className="card body-history"><div className="card-heading"><h2>Previous readings</h2></div>{recent.length?<table><thead><tr><th>Date</th><th>Weight</th><th>Body fat</th></tr></thead><tbody>{recent.map(e=><tr key={e.id}><td>{shortDate(e.date)}</td><td>{fmt(e.value)}<small> kg</small></td><td>{typeof e.bodyFat==='number'?fmt(e.bodyFat)+'%':'—'}</td></tr>)}</tbody></table>:<p className="history-empty">Earlier readings appear here after syncing.</p>}</section>
- </aside></div>;
+ </div>;
 }
 export function CalorieCard({entries,today,timezone,onLog,onRemove,busy}:{entries:Entry[];today:string;timezone:string;onLog:()=>void;onRemove:(entry:Entry)=>void;busy:boolean}){
  const history=entries.filter(e=>e.kind==='food').sort((a,b)=>b.date.localeCompare(a.date)||(b.loggedAt||'').localeCompare(a.loggedAt||'')||(b.createdAt||0)-(a.createdAt||0));
  const foods=history.filter(e=>e.date===today),total=foods.reduce((n,e)=>n+e.value,0);
- 
  return <section className="calorie-card"><div className="calorie-card-heading"><span className="calorie-icon"><Utensils size={19}/></span><h2>Calorie journal</h2></div><p className="calorie-label">Today's intake</p><div className="calorie-summary"><strong className="calorie-total">{foods.length?fmt(total,0):'—'}<small> kcal</small></strong><p className="calorie-count">{foods.length?`${foods.length} ${foods.length===1?'entry':'entries'} today`:'Nothing logged today'}</p></div><button className="button calorie-log" onClick={onLog}><Plus size={17}/>Log calories</button>{foods.length>0&&<div className="calorie-history"><h3>Today's entries <span>{foods.length}</span></h3><div className="calorie-history-list" tabIndex={0} aria-label="Today's calorie entries">{foods.map(e=><div className="journal-row" key={e.id}><div><b>{e.label||'Calories'}</b><small>{e.loggedAt?e.loggedAt.slice(11,16):e.createdAt?new Intl.DateTimeFormat('en-AU',{hour:'numeric',minute:'2-digit',timeZone:timezone}).format(new Date(e.createdAt)):'Today'}</small></div><strong>{fmt(e.value,0)}<small> kcal</small></strong><button className="icon-button delete" title="Delete entry" aria-label={`Delete ${fmt(e.value,0)} calorie entry`} disabled={busy} onClick={()=>onRemove(e)}><Trash2 size={17}/></button></div>)}</div></div>}<CalorieWeek entries={history} today={today}/></section>;
 }
 function CalorieWeek({entries,today}:{entries:Entry[];today:string}){

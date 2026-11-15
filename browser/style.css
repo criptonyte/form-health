@@ -125,7 +125,6 @@ h1{font-family:Fraunces,Georgia,serif;font-size:45px;font-weight:400;letter-spac
 .simple-layout .header-action:hover,.simple-layout .header-action:focus-visible{background:#edf0e4;color:#315b43}
 .simple-layout .connection-action{background:#eef2e8;color:#3b654c}
 .simple-layout .connection-action .connected-dot{width:6px;height:6px;order:-1}
-.body-plot svg:focus-visible{outline:2px solid #789777;outline-offset:3px;border-radius:5px}
 .body-history .history-empty{margin-top:14px}
 .calorie-history h3{font-size:12px}
 @media(max-width:700px){
@@ -334,7 +333,6 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #527c
 @media(prefers-reduced-motion:reduce){.spin{animation:none}}
 
 .simple-layout .topbar .brand{gap:9px;min-height:44px}
-.brand-mark{display:block;border-radius:9px;flex:none}
 .simple-layout .page-heading{align-items:center}
 .sync-area{flex-direction:row;align-items:center;gap:2px}
 .sync-status{order:-1;min-height:0;max-width:112px}
@@ -343,17 +341,6 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #527c
 .page-sync-action:disabled{opacity:.65;cursor:wait}
 
 .body-chart{padding-bottom:15px}
-.history-period{display:flex;margin-left:auto}
-.history-period button{position:relative;min-width:44px;min-height:44px;color:#5e7062;font-size:12px;font-variant-numeric:tabular-nums;border-radius:6px}
-.history-period button:hover{background:#f1f5ef}
-.history-period button[aria-pressed=true]{font-weight:650;color:#254e3b}
-.history-period button[aria-pressed=true]::after{content:'';position:absolute;bottom:7px;left:12px;right:12px;height:2px;border-radius:2px;background:#518268}
-.weight-chart-caption{display:flex;gap:4px 14px;justify-content:space-between;align-items:baseline;flex-wrap:wrap;margin-top:12px}
-.weight-chart-caption .body-chart-key{margin:0;gap:7px 14px;font-size:11px}
-.weight-selection{color:#526b5a;font-size:11px;font-variant-numeric:tabular-nums}
-.weight-selection strong{color:#254e3b;margin-left:4px}
-.weight-selection:empty{display:none}
-.body-plot svg:focus-visible{outline:2px solid #527c5d;outline-offset:4px;border-radius:4px}
 
 .calorie-week-heading,.calorie-week-detail{display:flex;justify-content:space-between;align-items:baseline;gap:6px 10px;flex-wrap:wrap}
 .calorie-week-heading h3{margin:0}
@@ -372,3 +359,19 @@ dialog.settings-panel{height:auto}
 .settings-section h3{font-size:15px;font-weight:650;margin-bottom:8px;color:#345c45}
 .settings-install{margin-top:18px;padding-top:16px;border-top:1px solid #e8ede4}
 .settings-install .modal-description{margin:0}
+
+.body-chart .measurement-date{margin-bottom:12px}
+.body-chart .body-plot{margin-top:10px}
+.body-chart .body-plot svg{-webkit-tap-highlight-color:transparent}
+.body-chart .weight-chart-legend{margin:8px 0 2px;font-size:11px}
+.point-reading{margin:0;line-height:1.4}
+.point-reading time{font-size:12px;color:#526b5a}
+.point-nav>button[aria-disabled=true]{opacity:.3;cursor:default}
+.point-nav>button[aria-disabled=true]:hover{background:transparent}
+.reading-shortcuts{border-top:1px solid #edf0e7;margin-top:6px;padding-top:12px}
+.reading-shortcuts h2{font-size:13px;color:#425b49;font-weight:620;margin-bottom:6px}
+.reading-shortcut-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.reading-shortcut-list button{display:grid;gap:3px;min-height:44px;padding:7px 6px;border-radius:6px;text-align:left;color:#526b5a;font-size:11px}
+.reading-shortcut-list button:hover,.reading-shortcut-list button[aria-pressed=true]{background:#edf2e9}
+.reading-shortcut-list strong{color:#254e3b;font-size:13px;font-variant-numeric:tabular-nums}
+.reading-fat-label{white-space:nowrap}
