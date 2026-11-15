@@ -26,20 +26,7 @@ export function createLocalApi(engine){return async function api(path,body,metho
    await engine.mutate(data=>{data.entries=data.entries.filter(e=>e.id!==body.id||e.source==='withings');});
    return{ok:true};
   }
-  if(method==='PATCH'){
-   await engine.mutate(data=>{
-    const entry=data.entries.find(e=>e.id===body?.id);
-    if(!entry)throw new VaultError('This entry is no longer available.');
-    if(entry.kind==='weight'){
-     const value=numeric(body.value,20,400);
-     if(entry.source==='withings') entry.correctedWeight=value;
-     else entry.value=value;
-    }else if(entry.kind==='food'&&entry.source==='manual'){
-     Object.assign(entry,calorieFields(body));
-    }else throw new VaultError('This entry cannot be edited.');
-   });
-   return{id:body.id};
-  }
+  if(method!=='POST')throw new VaultError('This operation is not available.');
   const entry=validateEntry(body);
   await engine.mutate(data=>data.entries.push(entry));
   return{id:entry.id};

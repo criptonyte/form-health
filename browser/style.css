@@ -375,14 +375,3 @@ dialog.settings-panel{height:auto}
 .reading-shortcut-list button:hover,.reading-shortcut-list button[aria-pressed=true]{background:#edf2e9}
 .reading-shortcut-list strong{color:#254e3b;font-size:13px;font-variant-numeric:tabular-nums}
 .reading-fat-label{white-space:nowrap}
-
-.point-reading .weight-edit{min-width:44px;min-height:44px;color:#526b5a}
-.calorie-history .entry-edit{color:#d0dfc9;min-width:44px;min-height:44px}
-.calorie-history .entry-edit:hover{background:#ffffff1a;color:#fff}
-.calorie-history .entry-edit:focus-visible{outline-color:#e8edc1;outline-offset:2px}
-.calorie-history .journal-row{gap:4px}
-.calorie-history .journal-row>div{min-width:0}
-.calorie-history .journal-row>div b{overflow-wrap:anywhere}
-.calorie-week .calorie-history{margin-top:10px}
-.modal-content select{display:block;width:100%;min-height:44px;margin-top:6px;padding:8px 10px;border:1px solid #dce5d7;border-radius:8px;background:#fff;color:#294f3d}
-.modal-content select:focus-visible{outline:2px solid #527c5d;outline-offset:3px}

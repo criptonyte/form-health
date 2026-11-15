@@ -9,31 +9,8 @@ test('saves local records offline and validates dates, values and preferences',a
  const vault=createVault(storage()),api=createLocalApi(vault),today=dateKey();await assert.rejects(api('data'),/Unlock/);await vault.create(password);
  await vault.mutate(d=>d.entries.push({id:'existing-weight',kind:'weight',date:today,value:90,label:'',source:'manual'}));await assert.rejects(api('records',{kind:'weight',date:today,value:90}),/Manual weight entry/);await api('records',{kind:'food',date:today,value:450,label:'Test salad'});let d=await api('data');assert.equal(d.entries.length,2);
  await assert.rejects(api('records',{kind:'food',date:'2026-02-30',value:90}),/valid date/);await assert.rejects(api('records',{kind:'food',date:today,value:-5}),/between/);await assert.rejects(api('preferences',{goal:85,calories:2000,water:2500,timezone:'not/a-zone'}),/timezone/);
- const id=d.entries.find(e=>e.kind==='food').id;await api('records',{id},'DELETE');assert.equal((await api('data')).entries.length,1);
+ const id=d.entries.find(e=>e.kind==='food').id;await assert.rejects(api('records',{id,kind:'food',date:today,value:500},'PATCH'),/not available/);assert.equal((await api('data')).entries.length,2);await api('records',{id},'DELETE');assert.equal((await api('data')).entries.length,1);
  await vault.lock();await vault.unlock(password);assert.equal((await api('data')).entries[0].value,90);
-});
-test('edits a particular calorie or weight entry in place and keeps the change after reopening',async()=>{
- const vault=createVault(storage()),api=createLocalApi(vault);
- await vault.create(password);
- const {id}=await api('records',{kind:'food',date:'2026-04-01',time:'12:30',value:450,label:'Lunch'});
- await api('records',{kind:'food',date:'2026-04-01',time:'12:30',value:450});
- await vault.mutate(data=>data.entries.push({id:'weight',kind:'weight',source:'manual',date:'2026-04-01',value:90,label:'',bodyFat:26}));
- await assert.rejects(api('records',{id:'missing',value:500},'PATCH'),/no longer available/);
- await assert.rejects(api('records',{id:'weight',value:0},'PATCH'),/between/);
- await api('records',{id,date:'2026-04-02',time:'13:15',value:550},'PATCH');
- await api('records',{id:'weight',value:89.25},'PATCH');
- await vault.lock();
- await vault.unlock(password);
- const {entries}=await api('data');
- assert.equal(entries.length,3);
- assert.deepEqual(entries.filter(entry=>entry.kind==='food').map(entry=>entry.value),[550,450]);
- const edited=entries.find(entry=>entry.id===id);
- assert.equal(edited.label,'Lunch');
- assert.equal(edited.loggedAt,'2026-04-02T13:15');
- const weight=entries.find(entry=>entry.id==='weight');
- assert.equal(weight.date,'2026-04-01');
- assert.equal(weight.value,89.25);
- assert.equal(weight.bodyFat,26);
 });
 test('parses quoted CSV, converts pounds, skips bad dates and gives stable import IDs',async()=>{
  const text='Date,Weight (lb),Comments\r\n2026-10-20 07:00:00,200,"hello, world"\r\ninvalid,100,bad\r\n';
@@ -46,14 +23,10 @@ test('refreshes Withings tokens before measurement fetch and keeps manual record
  assert.equal(vault.snapshot().withings.tokens.refresh_token,'new-refresh');assert.equal(params.get('access_token'),'new-access');return Response.json({status:0,body:{more:0,measuregrps:[{grpid:7,date:Math.floor(Date.now()/1000),measures:[{type:1,value:90000,unit:-3},{type:6,value:285,unit:-1}]}]}});};
  try{assert.equal((await api('withings/sync',{})).imported,1);const d=await api('data');assert.equal(d.entries.length,2);assert.equal(d.entries.find(e=>e.source==='withings').value,90);assert.equal(d.entries.find(e=>e.source==='withings').bodyFat,28.5);assert.equal(calls,2);
  const synced=d.entries.find(e=>e.source==='withings');
- await api('records',{id:synced.id,value:89.7},'PATCH');
+ await vault.mutate(data=>{data.entries.find(e=>e.id===synced.id).correctedWeight=89.7;});
+ await assert.rejects(api('records',{id:synced.id,value:88},'PATCH'),/not available/);
  await api('withings/sync',{});
- const refreshed=(await api('data')).entries.filter(e=>e.source==='withings');
- assert.equal(refreshed.length,1);
- assert.equal(refreshed[0].id,synced.id);
- assert.equal(refreshed[0].value,89.7);
- assert.equal(refreshed[0].bodyFat,28.5);
- assert.equal(vault.snapshot().entries.find(e=>e.id===synced.id).value,90);
+ assert.equal((await api('data')).entries.find(e=>e.id===synced.id).value,89.7);
  }finally{globalThis.fetch=original;}
 });
 test('OAuth URL uses exact callback, least privilege and a state value',()=>{const url=new URL(withingsAuthorization('test-id','https://example.test/form-health/oauth-callback.html','nonce'));assert.equal(url.searchParams.get('scope'),'user.metrics');assert.equal(url.searchParams.get('state'),'nonce');assert.equal(url.searchParams.get('redirect_uri'),'https://example.test/form-health/oauth-callback.html');assert.equal(url.searchParams.has('client_secret'),false);});
