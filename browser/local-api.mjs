@@ -6,12 +6,44 @@ export function cancelWithings(){authorisationController?.abort();}
 export function isRemoteBusy(){return remoteBusy;}
 export function dateKey(d=new Date(),zone=deviceTimezone()){const p=new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d);return['year','month','day'].map(t=>p.find(x=>x.type===t).value).join('-');}
 const numeric=(v,min,max)=>{if(typeof v!=='number'||!Number.isFinite(v)||v<min||v>max)throw new VaultError(`Enter a number between ${min} and ${max}.`);return v;};
-export function validateEntry(b){if(b?.kind==='weight')throw new VaultError('Weight readings sync from Withings. Manual weight entry is not available.');if(!b||b.kind!=='food')throw new VaultError('Choose an entry type.');if(typeof b.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(b.date)||!Number.isFinite(Date.parse(b.date))||new Date(b.date).toISOString().slice(0,10)!==b.date||b.date>dateKey(new Date(),'Pacific/Kiritimati')||b.date<'2000-01-01')throw new VaultError('Choose a valid date, today or earlier.');const value=numeric(b.value,b.kind==='weight'?20:1,b.kind==='weight'?400:10000),label=typeof b.label==='string'?b.label.trim().slice(0,120):'';if(b.time!==undefined&&(typeof b.time!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(b.time)))throw new VaultError('Choose a valid time.');return{id:crypto.randomUUID(),kind:b.kind,date:b.date,value,label,loggedAt:b.time?b.date+'T'+b.time:null,source:'manual',createdAt:Date.now()};}
+function calorieFields({date,value,time}){
+ if(typeof date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date||date>dateKey(new Date(),'Pacific/Kiritimati')||date<'2000-01-01')throw new VaultError('Choose a valid date, today or earlier.');
+ if(time!==undefined&&(typeof time!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)))throw new VaultError('Choose a valid time.');
+ return{date,value:numeric(value,1,10000),loggedAt:time?date+'T'+time:null};
+}
+export function validateEntry(body){
+ if(body?.kind==='weight')throw new VaultError('Weight readings sync from Withings. Manual weight entry is not available.');
+ if(body?.kind!=='food')throw new VaultError('Choose an entry type.');
+ const label=typeof body.label==='string'?body.label.trim().slice(0,120):'';
+ return{id:crypto.randomUUID(),kind:'food',...calorieFields(body),label,source:'manual',createdAt:Date.now()};
+}
 export function validatePreferences(b){const p={calories:Math.round(numeric(b.calories,500,10000)),water:Math.round(numeric(b.water,250,10000)),timezone:b.timezone};if(typeof p.timezone!=='string')throw new VaultError('Choose a timezone.');try{new Intl.DateTimeFormat('en',{timeZone:p.timezone}).format();}catch{throw new VaultError('Choose a valid timezone.');}return p;}
 export function createLocalApi(engine){return async function api(path,body,method='POST'){
  if(!engine)throw new VaultError('This browser does not support local database storage.');
- if(path==='data'){const data=engine.snapshot(),timezone=deviceTimezone(),today=dateKey(new Date(),timezone),cutoff=new Date(Date.parse(today)-89*86400000).toISOString().slice(0,10);return{entries:data.entries.map(e=>e.source==='withings'&&Number.isFinite(e.createdAt)?{...e,date:dateKey(new Date(e.createdAt),timezone)}:e).filter(e=>e.date<=today&&(e.source!=='withings'||e.date>=cutoff)).sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt||0)-(a.createdAt||0)),preferences:{calories:data.preferences.calories??INITIAL_PREFERENCES.calories,water:data.preferences.water??INITIAL_PREFERENCES.water,timezone},withings:{configured:!!data.withings,connected:!!data.withings?.tokens,syncedAt:data.withings?.syncedAt??null}};}
- if(path==='records'){if(method==='DELETE'){await engine.mutate(data=>{data.entries=data.entries.filter(e=>e.id!==body.id||e.source==='withings');});return{ok:true};}const entry=validateEntry(body);await engine.mutate(data=>data.entries.push(entry));return{id:entry.id};}
+ if(path==='data'){const data=engine.snapshot(),timezone=deviceTimezone(),today=dateKey(new Date(),timezone),cutoff=new Date(Date.parse(today)-89*86400000).toISOString().slice(0,10);return{entries:data.entries.map(e=>e.source==='withings'&&Number.isFinite(e.createdAt)?{...e,date:dateKey(new Date(e.createdAt),timezone)}:e).map(e=>e.kind==='weight'&&e.correctedWeight!=null?{...e,value:e.correctedWeight}:e).filter(e=>e.date<=today&&(e.source!=='withings'||e.date>=cutoff)).sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt||0)-(a.createdAt||0)),preferences:{calories:data.preferences.calories??INITIAL_PREFERENCES.calories,water:data.preferences.water??INITIAL_PREFERENCES.water,timezone},withings:{configured:!!data.withings,connected:!!data.withings?.tokens,syncedAt:data.withings?.syncedAt??null}};}
+ if(path==='records'){
+  if(method==='DELETE'){
+   await engine.mutate(data=>{data.entries=data.entries.filter(e=>e.id!==body.id||e.source==='withings');});
+   return{ok:true};
+  }
+  if(method==='PATCH'){
+   await engine.mutate(data=>{
+    const entry=data.entries.find(e=>e.id===body?.id);
+    if(!entry)throw new VaultError('This entry is no longer available.');
+    if(entry.kind==='weight'){
+     const value=numeric(body.value,20,400);
+     if(entry.source==='withings') entry.correctedWeight=value;
+     else entry.value=value;
+    }else if(entry.kind==='food'&&entry.source==='manual'){
+     Object.assign(entry,calorieFields(body));
+    }else throw new VaultError('This entry cannot be edited.');
+   });
+   return{id:body.id};
+  }
+  const entry=validateEntry(body);
+  await engine.mutate(data=>data.entries.push(entry));
+  return{id:entry.id};
+ }
  if(path==='preferences'){const p=validatePreferences(body);await engine.mutate(data=>{data.preferences={...data.preferences,...p};});return{ok:true};}
  if(path==='withings/configure'){if(remoteBusy)throw new VaultError('Finish the current Withings operation first.');if(typeof body.clientId!=='string'||typeof body.clientSecret!=='string'||body.clientId.trim().length<8||body.clientSecret.trim().length<8||body.clientId.length>500||body.clientSecret.length>500)throw new VaultError('Enter the Client ID and Client Secret from your Withings developer app.');await engine.mutate(data=>{data.withings={clientId:body.clientId.trim(),clientSecret:body.clientSecret.trim(),tokens:null,syncedAt:null};});return{ok:true};}
  if(path==='withings/disconnect'){if(remoteBusy)throw new VaultError('Finish the current Withings operation first.');await engine.mutate(data=>{data.withings=null;});return{ok:true};}
@@ -27,7 +59,13 @@ export function createLocalApi(engine){return async function api(path,body,metho
  if(remoteBusy)throw new VaultError('A Withings operation is already running.');const data=engine.snapshot(),c=data.withings;if(!c?.tokens)throw new VaultError('Connect your Withings account first.');remoteBusy=true;
  try{let tokens=c.tokens;if(tokens.expiresAt<Date.now()+120000){tokens=await requestTokens(c,{grant_type:'refresh_token',refresh_token:tokens.refresh_token});await engine.mutate(next=>{next.withings.tokens=tokens;});}
  const imported=await fetchMeasurements(tokens,deviceTimezone()),today=dateKey(new Date(),deviceTimezone()),cutoff=new Date(Date.parse(today)-89*86400000).toISOString().slice(0,10);const selected=[...new Map(imported.filter(e=>e.date<=today&&(e.source!=='withings'||e.date>=cutoff)).map(e=>[e.id,e])).values()];
- await engine.mutate(next=>{next.entries=next.entries.filter(e=>e.source!=='withings'||e.date<cutoff).concat(selected);next.withings.syncedAt=Date.now();});return{imported:selected.length};
+ await engine.mutate(next=>{
+  const corrections=new Map(next.entries.filter(e=>e.source==='withings'&&e.correctedWeight!=null).map(e=>[e.id,e.correctedWeight]));
+  const refreshed=selected.map(entry=>entry.kind==='weight'&&corrections.has(entry.id)?{...entry,correctedWeight:corrections.get(entry.id)}:entry);
+  const refreshedIds=new Set(refreshed.map(entry=>entry.id));
+  next.entries=next.entries.filter(e=>!refreshedIds.has(e.id)&&(e.source!=='withings'||e.date<cutoff)).concat(refreshed);
+  next.withings.syncedAt=Date.now();
+ });return{imported:selected.length};
  }finally{remoteBusy=false;}
  }
  throw new VaultError('This operation is not available.');
