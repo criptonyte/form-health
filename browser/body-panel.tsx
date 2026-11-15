@@ -1,11 +1,11 @@
 import {useEffect,useMemo,useRef,useState,type MouseEvent} from 'react';
-import {Activity,ChevronLeft,ChevronRight,Pencil} from 'lucide-react';
+import {Activity,ChevronLeft,ChevronRight} from 'lucide-react';
 import {bodyAnalysis,type Entry} from './analysis';
 const number=(n:number|null)=>n===null?'—':n.toLocaleString('en-AU',{minimumFractionDigits:1,maximumFractionDigits:1});
 const date=(s:string)=>new Date(s+'T12:00:00Z').toLocaleDateString('en-AU',{day:'numeric',month:'short',timeZone:'UTC'});
 const CHART_DAYS=90;
-type Props={entries:Entry[];today:string;demo:boolean;connected:boolean;onEdit:(entries:Entry[])=>void};
-export default function BodyPanel({entries,today,demo,connected,onEdit}:Props){
+type Props={entries:Entry[];today:string;demo:boolean;connected:boolean};
+export default function BodyPanel({entries,today,demo,connected}:Props){
  const weight=useMemo(()=>bodyAnalysis(entries,CHART_DAYS,today,'weight'),[entries,today]);
  const fat=useMemo(()=>bodyAnalysis(entries,CHART_DAYS,today,'bodyFat'),[entries,today]);
  const [selected,setSelected]=useState<string|null>(null);
@@ -30,7 +30,6 @@ export default function BodyPanel({entries,today,demo,connected,onEdit}:Props){
  const selectedIndex=weight.daily.findIndex(point=>point.date===selected);
  const readingIndex=selectedIndex===-1?weight.daily.length-1:selectedIndex;
  const point=weight.daily[readingIndex];
- const editable=!demo&&point?entries.filter(entry=>entry.kind==='weight'&&entry.date===point.date):[];
  const previous=weight.daily.slice(-4,-1).reverse();
  const fatByDate=new Map(fat.daily.map(reading=>[reading.date,reading.value]));
  const sharedDate=weight.all.at(-1)?.date&&weight.all.at(-1)?.date===fat.all.at(-1)?.date?weight.all.at(-1)!.date:null;
@@ -43,10 +42,7 @@ export default function BodyPanel({entries,today,demo,connected,onEdit}:Props){
    <div className="point-slot">
     <div className="point-nav" role="group" aria-label="Browse weight readings">
      <button type="button" aria-label="Previous reading" data-weight-selection aria-disabled={readingIndex===0} onClick={()=>{const previous=weight.daily[readingIndex-1];if(previous)selectReading(previous.date);}}><ChevronLeft size={20}/></button>
-     <div className="point-reading">
-      <p aria-live="polite"><time dateTime={point.date}>{date(point.date)}</time> <strong>{number(point.value)} kg</strong></p>
-      {editable.length>0&&<button type="button" className="icon-button weight-edit" aria-label="Edit weight reading" title="Edit weight reading" onClick={()=>onEdit(editable)}><Pencil size={15}/></button>}
-     </div>
+     <p className="point-reading" aria-live="polite"><time dateTime={point.date}>{date(point.date)}</time><strong>{number(point.value)} kg</strong></p>
      <button type="button" aria-label="Next reading" data-weight-selection aria-disabled={readingIndex===weight.daily.length-1} onClick={()=>{const next=weight.daily[readingIndex+1];if(next)selectReading(next.date);}}><ChevronRight size={20}/></button>
     </div>
    </div>
