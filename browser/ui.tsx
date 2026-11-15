@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useMemo,useRef,useState,type FormEvent} from 'react';
-import {CircleHelp,ArrowRight,Check,Copy,Download,ExternalLink,Loader2,Plus,RefreshCw,ShieldCheck,SlidersHorizontal,Trash2,Utensils,X} from 'lucide-react';
+import {CircleHelp,ArrowRight,Check,Copy,Download,ExternalLink,Loader2,Pencil,Plus,RefreshCw,ShieldCheck,SlidersHorizontal,Trash2,Utensils,X} from 'lucide-react';
 import {dayKey,demoEntries,type Entry} from './analysis';
 import {api,isRemoteBusy,cancelWithings} from './local-api.mjs';
 import {vault} from './vault.mjs';
@@ -11,13 +11,15 @@ import {completedDayTotals} from './calorie-week';
 import {watchAppUpdates} from './app-updates.mjs';
 import {dismissLegacyNotifications} from './retire-notifications.mjs';
 export type Prefs={calories:number;water:number;timezone:string};
+type EntryUpdate={value:number;date?:string;time?:string};
 type Conn={configured:boolean;connected:boolean;syncedAt:number|null};
 const defaults:Prefs={calories:2000,water:2500,timezone:deviceTimezone()};
 const fmt=(v:number|null,d=1)=>v===null?'—':v.toLocaleString('en-AU',{minimumFractionDigits:d,maximumFractionDigits:d});
 const shortDate=(date:string)=>new Date(date+'T12:00:00Z').toLocaleDateString('en-AU',{day:'numeric',month:'short',timeZone:'UTC'});
 export default function Dashboard(){
  const [entries,setEntries]=useState<Entry[]>([]),[prefs,setPrefs]=useState(defaults),[conn,setConn]=useState<Conn>({configured:false,connected:false,syncedAt:null});
- const [loading,setLoading]=useState(true),[demo,setDemo]=useState(false),[modal,setModal]=useState<'food'|'settings'|'vault'|null>(null),[toast,setToast]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[ready,setReady]=useState(false);
+ const [loading,setLoading]=useState(true),[demo,setDemo]=useState(false),[modal,setModal]=useState<'food'|'weight'|'settings'|'vault'|null>(null),[toast,setToast]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[ready,setReady]=useState(false);
+ const [editingCalories,setEditingCalories]=useState<Entry|null>(null),[editingWeights,setEditingWeights]=useState<Entry[]>([]);
  const [undoEntry,setUndoEntry]=useState<Entry|null>(null),[syncError,setSyncError]=useState('');
  const [syncing,setSyncing]=useState(false),[updateWorker,setUpdateWorker]=useState<ServiceWorker|null>(null),[updating,setUpdating]=useState(false);
  const reloadForUpdate=useRef(false);
@@ -42,6 +44,19 @@ export default function Dashboard(){
  useEffect(()=>{if(modal){if(dialog.current&&!dialog.current.open)dialog.current.showModal();}else dialog.current?.close();if(modal==='settings'){const heading=dialog.current?.querySelector<HTMLElement>('.modal-toolbar h2');heading?.focus();const body=dialog.current?.querySelector('.modal-body');if(body)body.scrollTop=0;}},[modal]);
  useEffect(()=>{if(!modal)return;const previous=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=previous;};},[modal]);
  async function sync(){if(syncing)return;setSyncError('');setSyncing(true);try{await api('withings/sync',{});await refresh();setDemo(false);}catch(e){setSyncError((e as Error).message);}finally{setSyncing(false);}}
+ async function saveCalorie(update:EntryUpdate){
+  if(editingCalories)await api('records',{...update,id:editingCalories.id},'PATCH');
+  else await api('records',{...update,kind:'food'});
+  await refresh();
+  setModal(null);
+  setToast(editingCalories?'Calorie entry updated.':'Calories saved.');
+ }
+ async function saveWeight(id:string,value:number){
+  await api('records',{id,value},'PATCH');
+  await refresh();
+  setModal(null);
+  setToast('Weight reading updated.');
+ }
  async function remove(e:Entry){if(e.source==='withings')return;setBusy(true);try{await api('records',{id:e.id},'DELETE');await refresh();setUndoEntry(e);}catch(e){setToast((e as Error).message);}finally{setBusy(false);}}
  return <div className="app-shell simple-layout">
   <div className="main-wrap">
@@ -53,15 +68,17 @@ export default function Dashboard(){
     {error&&<div className="notice error"><CircleHelp size={18}/><span>{error}</span><button onClick={()=>{setLoading(true);refresh().then(()=>{setError('');setDemo(false);}).catch(e=>setError(e.message)).finally(()=>setLoading(false));}}>Retry</button></div>}
     {loading&&<p className="loading-note"><Loader2 size={14} className="spin"/>Opening your space…</p>}
     {demo&&<div className="demo-banner"><span><span className="demo-dot"/><b>Demo preview</b><span className="demo-description">Sample measurements, not your health data.</span></span><button onClick={()=>{setDemo(false);setModal(!ready?'vault':'settings');}}>Use my data<ArrowRight size={15}/></button></div>}
-    <Overview entries={active} logEntries={entries} prefs={prefs} today={today} busy={busy} demo={demo} ready={ready} onLog={()=>setModal('food')} onRemove={remove} connected={conn.connected}/>
-
-    
+    <Overview entries={active} logEntries={entries} prefs={prefs} today={today} busy={busy} demo={demo} ready={ready} onLog={()=>{setEditingCalories(null);setModal('food');}} onRemove={remove}
+      onEditCalories={entry=>{setEditingCalories(entry);setModal('food');}}
+      onEditWeight={readings=>{setEditingWeights(readings);setModal('weight');}} connected={conn.connected}/>
    </main>
   </div>
   {undoEntry&&<div className="undo-notice" role="status"><span>Calorie entry deleted</span><button disabled={busy} onClick={async()=>{setBusy(true);try{await api('records',{kind:'food',date:undoEntry.date,time:undoEntry.loggedAt?.slice(11,16)||new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:prefs.timezone}).format(new Date(undoEntry.createdAt||Date.now())),value:undoEntry.value,label:undoEntry.label||''});await refresh();setUndoEntry(null);setToast('Entry restored.');}catch(e){setToast((e as Error).message);}finally{setBusy(false);}}}>Undo</button><button aria-label="Dismiss undo" onClick={()=>setUndoEntry(null)}><X size={16}/></button></div>}
   {toast&&<div className="toast" role="status"><Check size={17}/><span>{toast}</span><button aria-label="Dismiss message" onClick={()=>setToast('')}><X size={16}/></button></div>}
-  <dialog className={modal==='settings'?'settings-panel':undefined} aria-labelledby={modal==='settings'?'settings-title':undefined} ref={dialog} onCancel={()=>setModal(null)} onClick={e=>{if(e.target===dialog.current)setModal(null);}}><div className="modal-content">{modal==='settings'&&<header className="modal-toolbar"><h2 id="settings-title" tabIndex={-1}>Settings</h2></header>}<button className="modal-close icon-button" aria-label="Close dialog" onClick={()=>setModal(null)}><X size={20}/></button>
-   <div className="modal-body">{modal==='food'&&ready&&<EntryForm today={today} timezone={prefs.timezone} ready={ready} onSave={async b=>{await api('records',b);await refresh();setModal(null);setToast('Calories saved.');}}/>}
+  <dialog className={modal==='settings'?'settings-panel':undefined} aria-labelledby={modal==='settings'?'settings-title':modal==='weight'||modal==='food'?'entry-title':undefined} ref={dialog} onCancel={()=>setModal(null)} onClick={e=>{if(e.target===dialog.current)setModal(null);}}><div className="modal-content">{modal==='settings'&&<header className="modal-toolbar"><h2 id="settings-title" tabIndex={-1}>Settings</h2></header>}<button className="modal-close icon-button" aria-label="Close dialog" onClick={()=>setModal(null)}><X size={20}/></button>
+   <div className="modal-body">
+   {modal==='food'&&ready&&<EntryForm key={editingCalories?.id??'new'} today={today} timezone={prefs.timezone} entry={editingCalories} onSave={saveCalorie}/>}
+   {modal==='weight'&&ready&&<WeightEditForm entries={editingWeights} timezone={prefs.timezone} onSave={saveWeight}/>}
    {modal==='vault'&&<VaultForm exists={vaultExists} onUnlocked={async()=>{setVaultExists(true);const d=await refresh();setDemo(!d.entries.some((e:Entry)=>e.kind==='weight'||e.kind==='bodyFat')&&!d.withings.connected);setError('');setModal(null);}}/>}
    {modal==='settings'&&<>
     <section className="settings-section" aria-labelledby="withings-title">
@@ -76,18 +93,48 @@ export default function Dashboard(){
   </div></div></dialog>
  </div>;
 }
-export function Overview({entries,logEntries,prefs,today,busy,demo,ready,onLog,onRemove,connected}:{entries:Entry[];logEntries:Entry[];prefs:Prefs;today:string;busy:boolean;demo:boolean;ready:boolean;onLog:()=>void;onRemove:(entry:Entry)=>void;connected:boolean}){
+export function Overview({entries,logEntries,prefs,today,busy,demo,ready,onLog,onRemove,onEditCalories,onEditWeight,connected}:{entries:Entry[];logEntries:Entry[];prefs:Prefs;today:string;busy:boolean;demo:boolean;ready:boolean;onLog:()=>void;onRemove:(entry:Entry)=>void;onEditCalories:(entry:Entry)=>void;onEditWeight:(entries:Entry[])=>void;connected:boolean}){
  return <div className="overview-grid">
-  <BodyPanel entries={entries} today={today} demo={demo} connected={connected}/>
-  {ready&&<CalorieCard entries={logEntries} today={today} timezone={prefs.timezone} onLog={onLog} onRemove={onRemove} busy={busy}/>}
+  <BodyPanel entries={entries} today={today} demo={demo} connected={connected} onEdit={onEditWeight}/>
+  {ready&&<CalorieCard entries={logEntries} today={today} timezone={prefs.timezone} onLog={onLog} onRemove={onRemove} onEdit={onEditCalories} busy={busy}/>}
  </div>;
 }
-export function CalorieCard({entries,today,timezone,onLog,onRemove,busy}:{entries:Entry[];today:string;timezone:string;onLog:()=>void;onRemove:(entry:Entry)=>void;busy:boolean}){
- const history=entries.filter(e=>e.kind==='food').sort((a,b)=>b.date.localeCompare(a.date)||(b.loggedAt||'').localeCompare(a.loggedAt||'')||(b.createdAt||0)-(a.createdAt||0));
- const foods=history.filter(e=>e.date===today),total=foods.reduce((n,e)=>n+e.value,0);
- return <section className="calorie-card"><div className="calorie-card-heading"><span className="calorie-icon"><Utensils size={19}/></span><h2>Calorie journal</h2></div><p className="calorie-label">Today's intake</p><div className="calorie-summary"><strong className="calorie-total">{foods.length?fmt(total,0):'—'}<small> kcal</small></strong><p className="calorie-count">{foods.length?`${foods.length} ${foods.length===1?'entry':'entries'} today`:'Nothing logged today'}</p></div><button className="button calorie-log" onClick={onLog}><Plus size={17}/>Log calories</button>{foods.length>0&&<div className="calorie-history"><h3>Today's entries <span>{foods.length}</span></h3><div className="calorie-history-list" tabIndex={0} aria-label="Today's calorie entries">{foods.map(e=><div className="journal-row" key={e.id}><div><b>{e.label||'Calories'}</b><small>{e.loggedAt?e.loggedAt.slice(11,16):e.createdAt?new Intl.DateTimeFormat('en-AU',{hour:'numeric',minute:'2-digit',timeZone:timezone}).format(new Date(e.createdAt)):'Today'}</small></div><strong>{fmt(e.value,0)}<small> kcal</small></strong><button className="icon-button delete" title="Delete entry" aria-label={`Delete ${fmt(e.value,0)} calorie entry`} disabled={busy} onClick={()=>onRemove(e)}><Trash2 size={17}/></button></div>)}</div></div>}<CalorieWeek entries={history} today={today}/></section>;
+function entryTime(entry:Entry,timezone:string){
+ if(entry.loggedAt)return entry.loggedAt.slice(11,16);
+ if(!entry.createdAt)return '';
+ return new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZone:timezone}).format(new Date(entry.createdAt));
 }
-function CalorieWeek({entries,today}:{entries:Entry[];today:string}){
+type CalorieActions={timezone:string;busy:boolean;onEdit:(entry:Entry)=>void;onRemove:(entry:Entry)=>void};
+export function CalorieCard({entries,today,onLog,...actions}:CalorieActions&{entries:Entry[];today:string;onLog:()=>void}){
+ const history=entries.filter(e=>e.kind==='food').sort((a,b)=>b.date.localeCompare(a.date)||(b.loggedAt||'').localeCompare(a.loggedAt||'')||(b.createdAt||0)-(a.createdAt||0));
+ const foods=history.filter(e=>e.date===today),total=foods.reduce((sum,entry)=>sum+entry.value,0);
+ return <section className="calorie-card">
+  <div className="calorie-card-heading"><span className="calorie-icon"><Utensils size={19}/></span><h2>Calorie journal</h2></div>
+  <p className="calorie-label">Today's intake</p>
+  <div className="calorie-summary"><strong className="calorie-total">{foods.length?fmt(total,0):'—'}<small> kcal</small></strong><p className="calorie-count">{foods.length?`${foods.length} ${foods.length===1?'entry':'entries'} today`:'Nothing logged today'}</p></div>
+  <button className="button calorie-log" onClick={onLog}><Plus size={17}/>Log calories</button>
+  {foods.length>0&&<CalorieEntries entries={foods} title="Today's entries" {...actions}/>}
+  <CalorieWeek entries={history} today={today} {...actions}/>
+ </section>;
+}
+function CalorieEntries({entries,title,timezone,onEdit,onRemove,busy}:CalorieActions&{entries:Entry[];title:string}){
+ return <div className="calorie-history">
+  <h3>{title} <span>{entries.length}</span></h3>
+  <div className="calorie-history-list" aria-label={title}>
+   {entries.map(entry=>{
+    const time=entryTime(entry,timezone);
+    const amount=fmt(entry.value,0);
+    return <div className="journal-row" key={entry.id}>
+     <div><b>{entry.label||'Calories'}</b>{time&&<small>{time}</small>}</div>
+     <strong>{amount}<small> kcal</small></strong>
+     {entry.source==='manual'&&<button type="button" className="icon-button entry-edit" title="Edit entry" aria-label={`Edit ${amount} calorie entry${time?' at '+time:''}`} disabled={busy} onClick={()=>onEdit(entry)}><Pencil size={16}/></button>}
+     <button type="button" className="icon-button delete" title="Delete entry" aria-label={`Delete ${amount} calorie entry`} disabled={busy} onClick={()=>onRemove(entry)}><Trash2 size={17}/></button>
+    </div>;
+   })}
+  </div>
+ </div>;
+}
+function CalorieWeek({entries,today,...actions}:CalorieActions&{entries:Entry[];today:string}){
  const week=completedDayTotals(entries,today).reverse();
  const logged=week.filter(day=>day.count>0);
  const [selectedKey,setSelectedKey]=useState<string|null>(null);
@@ -106,12 +153,57 @@ function CalorieWeek({entries,today}:{entries:Entry[];today:string}){
    })}
   </div>
   <p className="calorie-week-detail" aria-live="polite">{selected?<>{shortDate(selected.key)} <strong>{selected.count?fmt(selected.total,0)+' kcal':'No entries'}</strong></>:average===null?'No entries this week':<>Average on logged days <strong>{fmt(average,0)} kcal</strong></>}</p>
+  {selected&&selected.count>0&&<CalorieEntries entries={entries.filter(entry=>entry.date===selected.key)} title={`Entries for ${shortDate(selected.key)}`} {...actions}/>}
  </section>;
 }
-function EntryForm({today,timezone,ready,onSave}:{timezone:string;today:string;ready:boolean;onSave:(b:any)=>Promise<void>}){
+function EntryForm({today,timezone,entry,onSave}:{timezone:string;today:string;entry:Entry|null;onSave:(update:EntryUpdate)=>Promise<void>}){
  const [error,setError]=useState(''),[saving,setSaving]=useState(false);
- async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();setSaving(true);setError('');const f=new FormData(e.currentTarget);try{await onSave({kind:'food',date:f.get('date'),time:f.get('time'),value:Number(f.get('value')),label:''});}catch(e){setError((e as Error).message);}finally{setSaving(false);}}
- return <form onSubmit={submit}><span className="modal-feature-icon peach"><Utensils size={26}/></span><p className="section-kicker">YOUR JOURNAL</p><h2>Log calories.</h2><p className="modal-description">Just an amount and a time. Change the date for an earlier entry.</p><label>Calories (kcal)<input name="value" type="number" step="1" min={1} max={10000} placeholder="450" required autoFocus/></label><div className="form-row"><label>Date<input type="date" name="date" defaultValue={today} max={today} required/></label><label>Time<input type="time" name="time" defaultValue={new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:timezone}).format(new Date())} required/></label></div>{error&&<p className="form-error" role="alert">{error}</p>}{!ready&&<p className="form-error">Open your existing records before saving an entry.</p>}<button className="button primary full" disabled={saving||!ready}>{saving?<Loader2 className="spin" size={17}/>:<Plus size={17}/>}Save calories</button></form>;
+ const defaultTime=entry?entryTime(entry,timezone):new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZone:timezone}).format(new Date());
+ async function submit(event:FormEvent<HTMLFormElement>){
+  event.preventDefault();
+  setSaving(true);
+  setError('');
+  const data=new FormData(event.currentTarget);
+  try{await onSave({value:Number(data.get('value')),date:String(data.get('date')),time:String(data.get('time'))||undefined});}
+  catch(e){setError((e as Error).message);}
+  finally{setSaving(false);}
+ }
+ return <form onSubmit={submit}>
+  <span className="modal-feature-icon peach"><Utensils size={26}/></span>
+  <h2 id="entry-title">{entry?'Edit calories':'Log calories'}</h2>
+  <label>Calories (kcal)<input name="value" type="number" step={entry?"any":1} min={1} max={10000} placeholder="450" defaultValue={entry?.value} required autoFocus/></label>
+  <div className="form-row">
+   <label>Date<input type="date" name="date" defaultValue={entry?.date??today} max={today} required/></label>
+   <label>Time<input type="time" name="time" defaultValue={defaultTime} required={!entry||!!defaultTime}/></label>
+  </div>
+  {error&&<p className="form-error" role="alert">{error}</p>}
+  <button className="button primary full" disabled={saving}>{saving?<Loader2 className="spin" size={17}/>:entry?<Check size={17}/>:<Plus size={17}/>} {entry?'Save changes':'Save calories'}</button>
+ </form>;
+}
+function WeightEditForm({entries,timezone,onSave}:{entries:Entry[];timezone:string;onSave:(id:string,value:number)=>Promise<void>}){
+ const [entryId,setEntryId]=useState(entries[0].id);
+ const [error,setError]=useState(''),[saving,setSaving]=useState(false);
+ const entry=entries.find(reading=>reading.id===entryId)!;
+ async function submit(event:FormEvent<HTMLFormElement>){
+  event.preventDefault();
+  setSaving(true);
+  setError('');
+  const value=Number(new FormData(event.currentTarget).get('value'));
+  try{await onSave(entryId,value);}
+  catch(e){setError((e as Error).message);}
+  finally{setSaving(false);}
+ }
+ return <form onSubmit={submit}>
+  <span className="modal-feature-icon"><Pencil size={24}/></span>
+  <h2 id="entry-title">Edit weight reading</h2>
+  <p className="modal-description">{shortDate(entry.date)}{entry.source==='withings'?' · Withings correction on this device':''}</p>
+  {entries.length>1&&<label>Reading<select value={entryId} disabled={saving} onChange={event=>{setEntryId(event.target.value);setError('');}}>
+   {entries.map((reading,index)=><option key={reading.id} value={reading.id}>{entryTime(reading,timezone)||`Reading ${index+1}`} · {reading.value.toLocaleString('en-AU',{maximumFractionDigits:3})} kg · {reading.source==='withings'?'Withings':reading.source==='csv'?'Imported':'Manual'}</option>)}
+  </select></label>}
+  <label>Weight (kg)<input key={entryId} name="value" type="number" min={20} max={400} step="any" defaultValue={entry.value} required autoFocus/></label>
+  {error&&<p className="form-error" role="alert">{error}</p>}
+  <button className="button primary full" disabled={saving}>{saving?<Loader2 className="spin" size={17}/>:<Check size={17}/>} Save changes</button>
+ </form>;
 }
 function ConnectForm({conn,onSync,busy,onChange,onMessage,ready}:{conn:Conn;onSync:()=>void;busy:boolean;onChange:()=>Promise<void>;onMessage:(s:string)=>void;ready:boolean}){
  const [error,setError]=useState(''),[saving,setSaving]=useState(false),[edit,setEdit]=useState(false),[confirm,setConfirm]=useState(false);
