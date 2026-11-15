@@ -368,10 +368,6 @@ dialog.settings-panel{height:auto}
 .point-reading time{font-size:12px;color:#526b5a}
 .point-nav>button[aria-disabled=true]{opacity:.3;cursor:default}
 .point-nav>button[aria-disabled=true]:hover{background:transparent}
-.reading-shortcuts{border-top:1px solid #edf0e7;margin-top:6px;padding-top:12px}
-.reading-shortcuts h2{font-size:13px;color:#425b49;font-weight:620;margin-bottom:6px}
-.reading-shortcut-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-.reading-shortcut-list button{display:grid;gap:3px;min-height:44px;padding:7px 6px;border-radius:6px;text-align:left;color:#526b5a;font-size:11px}
-.reading-shortcut-list button:hover,.reading-shortcut-list button[aria-pressed=true]{background:#edf2e9}
-.reading-shortcut-list strong{color:#254e3b;font-size:13px;font-variant-numeric:tabular-nums}
-.reading-fat-label{white-space:nowrap}
+.calorie-day--today{font-weight:650;color:#f2f7ec}
+.calorie-day--today .calorie-day-track{border-bottom-color:#e4f1be}
+.calorie-day--today .calorie-day-bar,.calorie-day--today[aria-pressed=true] .calorie-day-bar{border:1px dashed #e4f1be;border-bottom:0;background:#e4f1be36}

@@ -30,8 +30,6 @@ export default function BodyPanel({entries,today,demo,connected}:Props){
  const selectedIndex=weight.daily.findIndex(point=>point.date===selected);
  const readingIndex=selectedIndex===-1?weight.daily.length-1:selectedIndex;
  const point=weight.daily[readingIndex];
- const previous=weight.daily.slice(-4,-1).reverse();
- const fatByDate=new Map(fat.daily.map(reading=>[reading.date,reading.value]));
  const sharedDate=weight.all.at(-1)?.date&&weight.all.at(-1)?.date===fat.all.at(-1)?.date?weight.all.at(-1)!.date:null;
  return <section ref={panel} className="body-panel" aria-label="Measurements"><div className="body-chart card">
   <div className="body-stats"><div className="body-stat"><p>Weight</p><strong>{number(weight.all.at(-1)?.value??null)}<small>kg</small></strong>{!sharedDate&&<span>{weight.all.length?date(weight.all.at(-1)!.date):'No readings yet'}</span>}</div><div className="body-stat"><p>Body fat</p><strong>{number(fat.all.at(-1)?.value??null)}<small>%</small></strong>{!sharedDate&&<span>{fat.all.length?date(fat.all.at(-1)!.date):'No estimate yet'}</span>}</div></div>
@@ -47,20 +45,6 @@ export default function BodyPanel({entries,today,demo,connected}:Props){
     </div>
    </div>
   </>}
-  {previous.length>0&&<section className="reading-shortcuts" aria-labelledby="reading-shortcuts-title">
-   <h2 id="reading-shortcuts-title">Recent readings</h2>
-   <div className="reading-shortcut-list">
-    {previous.map(reading=>{
-     const bodyFat=fatByDate.get(reading.date);
-     return <button type="button" key={reading.date} data-weight-selection aria-pressed={reading.date===selected} onClick={()=>selectReading(reading.date)}>
-      <time dateTime={reading.date}>{date(reading.date)}</time>
-      <strong>{number(reading.value)} kg</strong>
-      {bodyFat!==undefined&&<span>{number(bodyFat)}% <span className="reading-fat-label">body fat</span></span>}
-     </button>;
-    })}
-   </div>
-  </section>}
-
  </div></section>;
 }
 function BodyChart({analysis:a,today,selected,onSelect,connected}:{analysis:ReturnType<typeof bodyAnalysis>;today:string;selected:string|null;onSelect:(date:string)=>void;connected:boolean}){
