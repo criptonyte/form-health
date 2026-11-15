@@ -7,7 +7,7 @@ import {vault} from './vault.mjs';
 import {deviceTimezone} from './timezone.mjs';
 import {callbackUrl} from './withings.mjs';
 import BodyPanel from './body-panel';
-import {completedDayTotals} from './calorie-week';
+import {calorieWeek} from './calorie-week';
 import {watchAppUpdates} from './app-updates.mjs';
 import {dismissLegacyNotifications} from './retire-notifications.mjs';
 export type Prefs={calories:number;water:number;timezone:string};
@@ -85,27 +85,27 @@ export function Overview({entries,logEntries,prefs,today,busy,demo,ready,onLog,o
 export function CalorieCard({entries,today,timezone,onLog,onRemove,busy}:{entries:Entry[];today:string;timezone:string;onLog:()=>void;onRemove:(entry:Entry)=>void;busy:boolean}){
  const history=entries.filter(e=>e.kind==='food').sort((a,b)=>b.date.localeCompare(a.date)||(b.loggedAt||'').localeCompare(a.loggedAt||'')||(b.createdAt||0)-(a.createdAt||0));
  const foods=history.filter(e=>e.date===today),total=foods.reduce((n,e)=>n+e.value,0);
- return <section className="calorie-card"><div className="calorie-card-heading"><span className="calorie-icon"><Utensils size={19}/></span><h2>Calorie journal</h2></div><p className="calorie-label">Today's intake</p><div className="calorie-summary"><strong className="calorie-total">{foods.length?fmt(total,0):'—'}<small> kcal</small></strong><p className="calorie-count">{foods.length?`${foods.length} ${foods.length===1?'entry':'entries'} today`:'Nothing logged today'}</p></div><button className="button calorie-log" onClick={onLog}><Plus size={17}/>Log calories</button>{foods.length>0&&<div className="calorie-history"><h3>Today's entries <span>{foods.length}</span></h3><div className="calorie-history-list" tabIndex={0} aria-label="Today's calorie entries">{foods.map(e=><div className="journal-row" key={e.id}><div><b>{e.label||'Calories'}</b><small>{e.loggedAt?e.loggedAt.slice(11,16):e.createdAt?new Intl.DateTimeFormat('en-AU',{hour:'numeric',minute:'2-digit',timeZone:timezone}).format(new Date(e.createdAt)):'Today'}</small></div><strong>{fmt(e.value,0)}<small> kcal</small></strong><button className="icon-button delete" title="Delete entry" aria-label={`Delete ${fmt(e.value,0)} calorie entry`} disabled={busy} onClick={()=>onRemove(e)}><Trash2 size={17}/></button></div>)}</div></div>}<CalorieWeek entries={history} today={today}/></section>;
+ return <section className="calorie-card"><div className="calorie-card-heading"><span className="calorie-icon"><Utensils size={19}/></span><h2>Calorie journal</h2></div><p className="calorie-label">Today's intake</p><div className="calorie-summary"><strong className="calorie-total">{foods.length?fmt(total,0):'—'}<small> kcal</small></strong><p className="calorie-count">{foods.length?`${foods.length} ${foods.length===1?'entry':'entries'} today`:'Nothing logged today'}</p></div><button className="button calorie-log" onClick={onLog}><Plus size={17}/>Log calories</button><CalorieWeek entries={history} today={today}/>{foods.length>0&&<div className="calorie-history"><h3>Today's entries <span>{foods.length}</span></h3><div className="calorie-history-list" tabIndex={0} aria-label="Today's calorie entries">{foods.map(e=><div className="journal-row" key={e.id}><div><b>{e.label||'Calories'}</b><small>{e.loggedAt?e.loggedAt.slice(11,16):e.createdAt?new Intl.DateTimeFormat('en-AU',{hour:'numeric',minute:'2-digit',timeZone:timezone}).format(new Date(e.createdAt)):'Today'}</small></div><strong>{fmt(e.value,0)}<small> kcal</small></strong><button className="icon-button delete" title="Delete entry" aria-label={`Delete ${fmt(e.value,0)} calorie entry`} disabled={busy} onClick={()=>onRemove(e)}><Trash2 size={17}/></button></div>)}</div></div>}</section>;
 }
 function CalorieWeek({entries,today}:{entries:Entry[];today:string}){
- const week=completedDayTotals(entries,today).reverse();
- const logged=week.filter(day=>day.count>0);
+ const {days,average}=calorieWeek(entries,today);
+ const logged=days.filter(day=>day.count>0);
  const [selectedKey,setSelectedKey]=useState<string|null>(null);
- const selected=week.find(day=>day.key===selectedKey);
+ const selected=days.find(day=>day.key===selectedKey);
  const maximum=Math.max(1,...logged.map(day=>day.total));
- const average=logged.length?logged.reduce((sum,day)=>sum+day.total,0)/logged.length:null;
  return <section className="calorie-week" aria-labelledby="calorie-week-title">
-  <div className="calorie-week-heading"><h3 id="calorie-week-title">Previous 7 days</h3><span>{logged.length}/7 logged</span></div>
+  <div className="calorie-week-heading"><h3 id="calorie-week-title">Last 7 days</h3><span>{logged.length}/7 logged</span></div>
   <div className="calorie-bars" role="group" aria-label="Daily calorie totals, oldest first">
-   {week.map(day=>{
+   {days.map(day=>{
+    const isToday=day.key===today;
     const weekday=new Date(day.key+'T12:00:00Z').toLocaleDateString('en-AU',{weekday:'short',timeZone:'UTC'});
     const detail=day.count?fmt(day.total,0)+' kcal':'No entries';
-    return <button className="calorie-day" key={day.key} type="button" aria-label={`${weekday} ${shortDate(day.key)}, ${detail}`} aria-pressed={selected?.key===day.key} onClick={()=>setSelectedKey(selected?.key===day.key?null:day.key)}>
-     <span className="calorie-day-track" aria-hidden="true">{day.count>0&&<span className="calorie-day-bar" style={{height:`${day.total/maximum*100}%`}}/>}</span><span aria-hidden="true">{weekday}</span>
+    return <button className={isToday?'calorie-day calorie-day--today':'calorie-day'} key={day.key} type="button" aria-label={`${isToday?'Today':weekday} ${shortDate(day.key)}, ${detail}${isToday&&day.count?' so far':''}`} aria-pressed={selected?.key===day.key} onClick={()=>setSelectedKey(selected?.key===day.key?null:day.key)}>
+     <span className="calorie-day-track" aria-hidden="true">{day.count>0&&<span className="calorie-day-bar" style={{height:`${day.total/maximum*100}%`}}/>}</span><span aria-hidden="true">{isToday?'Today':weekday}</span>
     </button>;
    })}
   </div>
-  <p className="calorie-week-detail" aria-live="polite">{selected?<>{shortDate(selected.key)} <strong>{selected.count?fmt(selected.total,0)+' kcal':'No entries'}</strong></>:average===null?'No entries this week':<>Average on logged days <strong>{fmt(average,0)} kcal</strong></>}</p>
+  <p className="calorie-week-detail" aria-live="polite">{selected?<>{selected.key===today?'Today so far':shortDate(selected.key)} <strong>{selected.count?fmt(selected.total,0)+' kcal':'No entries'}</strong></>:average===null?'No completed days logged':<>Avg. on prior logged days <strong>{fmt(average,0)} kcal</strong></>}</p>
  </section>;
 }
 function EntryForm({today,timezone,ready,onSave}:{timezone:string;today:string;ready:boolean;onSave:(b:any)=>Promise<void>}){
