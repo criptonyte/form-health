@@ -1,4 +1,4 @@
-const VERSION="form-local-a6a50b123a8f";
+const VERSION="form-local-2de964fe8d19";
 
 self.addEventListener('install',event=>{
  event.waitUntil((async()=>{
