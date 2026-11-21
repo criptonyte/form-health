@@ -1,66 +1,59 @@
 import {deviceTimezone} from './timezone.mjs';
-import {vault,VaultError,INITIAL_PREFERENCES} from './vault.mjs';
-import {authoriseInPopup,requestTokens,fetchMeasurements} from './withings.mjs';
-let remoteBusy=false,authorisationController=null;
-export function cancelWithings(){authorisationController?.abort();}
-export function isRemoteBusy(){return remoteBusy;}
-export function dateKey(d=new Date(),zone=deviceTimezone()){const p=new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d);return['year','month','day'].map(t=>p.find(x=>x.type===t).value).join('-');}
-const numeric=(v,min,max)=>{if(typeof v!=='number'||!Number.isFinite(v)||v<min||v>max)throw new VaultError(`Enter a number between ${min} and ${max}.`);return v;};
-function calorieFields({date,value,time}){
- if(typeof date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date||date>dateKey(new Date(),'Pacific/Kiritimati')||date<'2000-01-01')throw new VaultError('Choose a valid date, today or earlier.');
- if(time!==undefined&&(typeof time!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)))throw new VaultError('Choose a valid time.');
- return{date,value:numeric(value,1,10000),loggedAt:time?date+'T'+time:null};
+import {vault,VaultError} from './vault.mjs';
+
+export function dateKey(date=new Date(),timezone=deviceTimezone()){
+ const parts=new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date);
+ return ['year','month','day'].map(type=>parts.find(part=>part.type===type).value).join('-');
 }
+
 export function validateEntry(body){
- if(body?.kind==='weight')throw new VaultError('Weight readings sync from Withings. Manual weight entry is not available.');
- if(body?.kind!=='food')throw new VaultError('Choose an entry type.');
+ if(body?.kind!=='food')throw new VaultError('Choose a calorie entry.');
+ const {date,time,value}=body;
+ if(typeof date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||
+    new Date(date).toISOString().slice(0,10)!==date||date>dateKey()||date<'2000-01-01'){
+  throw new VaultError('Choose a valid date, today or earlier.');
+ }
+ if(time!==undefined&&(typeof time!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))){
+  throw new VaultError('Choose a valid time.');
+ }
+ if(typeof value!=='number'||!Number.isFinite(value)||value<1||value>10000){
+  throw new VaultError('Enter a number between 1 and 10000.');
+ }
  const label=typeof body.label==='string'?body.label.trim().slice(0,120):'';
- return{id:crypto.randomUUID(),kind:'food',...calorieFields(body),label,source:'manual',createdAt:Date.now()};
+ return {id:crypto.randomUUID(),kind:'food',date,value,loggedAt:time?date+'T'+time:null,label,source:'manual',createdAt:Date.now()};
 }
-export function validatePreferences(b){const p={calories:Math.round(numeric(b.calories,500,10000)),water:Math.round(numeric(b.water,250,10000)),timezone:b.timezone};if(typeof p.timezone!=='string')throw new VaultError('Choose a timezone.');try{new Intl.DateTimeFormat('en',{timeZone:p.timezone}).format();}catch{throw new VaultError('Choose a valid timezone.');}return p;}
-export function createLocalApi(engine){return async function api(path,body,method='POST'){
- if(!engine)throw new VaultError('This browser does not support local database storage.');
- if(path==='data'){const data=engine.snapshot(),timezone=deviceTimezone(),today=dateKey(new Date(),timezone),cutoff=new Date(Date.parse(today)-89*86400000).toISOString().slice(0,10);return{entries:data.entries.map(e=>e.source==='withings'&&Number.isFinite(e.createdAt)?{...e,date:dateKey(new Date(e.createdAt),timezone)}:e).map(e=>e.kind==='weight'&&e.correctedWeight!=null?{...e,value:e.correctedWeight}:e).filter(e=>e.date<=today&&(e.source!=='withings'||e.date>=cutoff)).sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt||0)-(a.createdAt||0)),preferences:{calories:data.preferences.calories??INITIAL_PREFERENCES.calories,water:data.preferences.water??INITIAL_PREFERENCES.water,timezone},withings:{configured:!!data.withings,connected:!!data.withings?.tokens,syncedAt:data.withings?.syncedAt??null}};}
- if(path==='records'){
+
+export function createLocalApi(engine){
+ return async function api(path,body,method='POST'){
+  if(!engine)throw new VaultError('This browser does not support local database storage.');
+  if(path==='data'){
+   const today=dateKey();
+   const entries=engine.snapshot().entries
+    .filter(entry=>entry.kind==='food'&&entry.date<=today)
+    .sort((a,b)=>b.date.localeCompare(a.date)||
+     (b.loggedAt||'').localeCompare(a.loggedAt||'')||
+     (b.createdAt||0)-(a.createdAt||0));
+   return {entries};
+  }
+  if(path!=='records')throw new VaultError('This operation is not available.');
   if(method==='DELETE'){
-   await engine.mutate(data=>{data.entries=data.entries.filter(e=>e.id!==body.id||e.source==='withings');});
-   return{ok:true};
+   await engine.mutate(data=>{
+    data.entries=data.entries.filter(entry=>entry.kind!=='food'||entry.id!==body.id);
+   });
+   return {ok:true};
+  }
+  if(method==='PUT'){
+   if(body?.kind!=='food')throw new VaultError('Choose a calorie entry.');
+   await engine.mutate(data=>{
+    if(!data.entries.some(entry=>entry.id===body.id))data.entries.push(body);
+   });
+   return {id:body.id};
   }
   if(method!=='POST')throw new VaultError('This operation is not available.');
   const entry=validateEntry(body);
   await engine.mutate(data=>data.entries.push(entry));
-  return{id:entry.id};
- }
- if(path==='preferences'){const p=validatePreferences(body);await engine.mutate(data=>{data.preferences={...data.preferences,...p};});return{ok:true};}
- if(path==='withings/configure'){if(remoteBusy)throw new VaultError('Finish the current Withings operation first.');if(typeof body.clientId!=='string'||typeof body.clientSecret!=='string'||body.clientId.trim().length<8||body.clientSecret.trim().length<8||body.clientId.length>500||body.clientSecret.length>500)throw new VaultError('Enter the Client ID and Client Secret from your Withings developer app.');await engine.mutate(data=>{data.withings={clientId:body.clientId.trim(),clientSecret:body.clientSecret.trim(),tokens:null,syncedAt:null};});return{ok:true};}
- if(path==='withings/disconnect'){if(remoteBusy)throw new VaultError('Finish the current Withings operation first.');await engine.mutate(data=>{data.withings=null;});return{ok:true};}
- if(path==='withings/connect'){
- if(remoteBusy)throw new VaultError('A Withings operation is already running.');const c=engine.snapshot().withings;if(!c)throw new VaultError('Save your developer app credentials first.');remoteBusy=true;
- authorisationController=new AbortController();let state;
- try{await authoriseInPopup(c,authorisationController.signal,{save:async pending=>{state=pending.state;await engine.mutate(d=>{d.withings.pendingAuth=pending;});},read:async nonce=>{await engine.open();const pending=engine.snapshot().withings?.pendingAuth;return pending?.state===nonce?pending:null;}});await engine.open();return{ok:true};}
- catch(e){await engine.open().then(()=>engine.mutate(d=>{if(d.withings?.pendingAuth?.state===state&&d.withings.pendingAuth.status!=='saved')d.withings.pendingAuth.status='cancelled';})).catch(()=>{});throw e;}
- finally{remoteBusy=false;authorisationController=null;}
+  return {id:entry.id};
+ };
+}
 
- }
- if(path==='withings/sync'){
- if(remoteBusy)throw new VaultError('A Withings operation is already running.');const data=engine.snapshot(),c=data.withings;if(!c?.tokens)throw new VaultError('Connect your Withings account first.');remoteBusy=true;
- try{let tokens=c.tokens;if(tokens.expiresAt<Date.now()+120000){tokens=await requestTokens(c,{grant_type:'refresh_token',refresh_token:tokens.refresh_token});await engine.mutate(next=>{next.withings.tokens=tokens;});}
- const imported=await fetchMeasurements(tokens,deviceTimezone()),today=dateKey(new Date(),deviceTimezone()),cutoff=new Date(Date.parse(today)-89*86400000).toISOString().slice(0,10);const selected=[...new Map(imported.filter(e=>e.date<=today&&(e.source!=='withings'||e.date>=cutoff)).map(e=>[e.id,e])).values()];
- await engine.mutate(next=>{
-  const corrections=new Map(next.entries.filter(e=>e.source==='withings'&&e.correctedWeight!=null).map(e=>[e.id,e.correctedWeight]));
-  const refreshed=selected.map(entry=>entry.kind==='weight'&&corrections.has(entry.id)?{...entry,correctedWeight:corrections.get(entry.id)}:entry);
-  const refreshedIds=new Set(refreshed.map(entry=>entry.id));
-  next.entries=next.entries.filter(e=>!refreshedIds.has(e.id)&&(e.source!=='withings'||e.date<cutoff)).concat(refreshed);
-  next.withings.syncedAt=Date.now();
- });return{imported:selected.length};
- }finally{remoteBusy=false;}
- }
- throw new VaultError('This operation is not available.');
-}}
 export const api=createLocalApi(vault);
-export async function lockApp(){if(remoteBusy)throw new VaultError('Finish the Withings connection or sync before locking.');await vault.lock();window.dispatchEvent(new Event('form-locked'));}
-export function downloadText(text,name,type='application/json'){const url=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);}
-export async function saveBackup(passphrase){const text=await vault.backup(passphrase);downloadText(text,`form-encrypted-backup-${dateKey()}.json`);}
-export function parseCsv(text){if(text.length>8000000)throw new VaultError('Choose a CSV smaller than 8 MB.');text=text.replace(/^\uFEFF/,'');const first=text.split(/\r?\n/)[0],delimiter=(first.match(/;/g)||[]).length>(first.match(/,/g)||[]).length?';':',';const rows=[];let row=[],field='',quoted=false;for(let i=0;i<text.length;i++){const c=text[i];if(c==='"'){if(quoted&&text[i+1]==='"'){field+='"';i++;}else if(quoted)quoted=false;else if(!field)quoted=true;else field+=c;}else if(c===delimiter&&!quoted){row.push(field);field='';}else if((c==='\n'||c==='\r')&&!quoted){if(c==='\r'&&text[i+1]==='\n')i++;row.push(field);if(row.some(v=>v.trim()))rows.push(row);row=[];field='';}else field+=c;}if(quoted)throw new VaultError('The CSV contains an unfinished quoted field.');row.push(field);if(row.some(v=>v.trim()))rows.push(row);if(rows.length>20001)throw new VaultError('Import a CSV with at most 20,000 rows.');return rows;}
-export async function previewCsv(text,unit){if(!['kg','lb'].includes(unit))throw new VaultError('Choose the weight unit used in the CSV.');const rows=parseCsv(text);if(rows.length<2)throw new VaultError('This CSV has no weight readings.');const header=rows.shift().map(h=>h.trim().toLowerCase()),dateColumn=header.findIndex(h=>h==='date'||h==='datetime'||h==='timestamp'),weightColumn=header.findIndex(h=>/^weight(?:\s|\(|$)/.test(h)||h==='weight');if(dateColumn<0||weightColumn<0)throw new VaultError('The CSV needs Date and Weight columns, like a Withings weight export.');const heading=header[weightColumn];if((/\bkg\b/.test(heading)&&unit!=='kg')||(/\b(?:lb|lbs)\b/.test(heading)&&unit!=='lb'))throw new VaultError('The chosen unit does not match the weight column heading.');const entries=[];let skipped=0;for(const row of rows){const rawDate=(row[dateColumn]||'').trim(),date=rawDate.slice(0,10),rawValue=Number((row[weightColumn]||'').trim().replace(',','.')),value=unit==='lb'?rawValue*.45359237:rawValue;if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date||date<'2000-01-01'||date>dateKey(new Date(),'Pacific/Kiritimati')||!Number.isFinite(value)||value<20||value>400){skipped++;continue;}const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(rawDate+'|'+value.toFixed(5)));const id='csv:'+Array.from(new Uint8Array(hash),v=>v.toString(16).padStart(2,'0')).join('');entries.push({id,kind:'weight',date,value:Math.round(value*1000)/1000,label:'',source:'csv',createdAt:Date.parse(date)});}if(!entries.length)throw new VaultError('No valid readings found. Dates must start YYYY-MM-DD and weights must match the selected unit.');return{entries:[...new Map(entries.map(e=>[e.id,e])).values()],skipped};}
-export async function importCsv(entries){let added=0;await vault.mutate(data=>{const ids=new Set(data.entries.map(e=>e.id));for(const e of entries){if(!ids.has(e.id)){data.entries.push(e);ids.add(e.id);added++;}}});return{added};}

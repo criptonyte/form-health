@@ -1,6 +1,14 @@
-import type {Entry} from './analysis';
+export type CalorieEntry = {
+ id: string;
+ kind: 'food';
+ date: string;
+ value: number;
+ label: string;
+ loggedAt?: string | null;
+ createdAt?: number;
+};
 
-export function calorieWeek(entries:Pick<Entry,'kind'|'date'|'value'>[],today:string){
+export function calorieWeek(entries:{kind:string;date:string;value:number}[],today:string){
  const totals=new Map<string,{count:number;total:number}>();
  for(const entry of entries){if(entry.kind!=='food')continue;const day=totals.get(entry.date)??{count:0,total:0};day.count++;day.total+=entry.value;totals.set(entry.date,day);}
  const days=Array.from({length:7},(_,i)=>{
