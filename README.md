@@ -1,6 +1,10 @@
-# Form — Personal health
+# Form
 
-> **Browser-only GitHub Pages edition:** see [BROWSER.md](BROWSER.md). Its source is in `browser/` and the ready-to-publish site is in `docs/`. It stores encrypted records on your phone and makes direct Withings requests. The earlier Sites-based edition is documented below.
+> **Browser-only GitHub Pages edition:** see [BROWSER.md](BROWSER.md). Its source is in `browser/` and the ready-to-publish site is in `docs/`. It tracks calories and stores encrypted entries on your device.
+
+## Earlier Sites edition
+
+The rest of this README describes the separate Sites application.
 
 A private, installable web application for weight analysis, food journaling and water tracking. Built with React, Vinext and Cloudflare D1. Hosted access uses Sign in with ChatGPT and owner-only Sites access.
 
@@ -35,7 +39,7 @@ Default targets (85 kg, 2,000 kcal and 2,500 ml) are editable tracking preferenc
 
 Use the Sites skill helpers to install dependencies, preview, package and deploy. Run `node node_modules/typescript/bin/tsc --noEmit` for type checks and `node --experimental-strip-types --test tests/analysis.test.mjs` for analysis checks. Run `node --experimental-vm-modules --test tests/api.test.mjs` for database-backed API tests. Run `npm run db:generate` after schema edits; apply generated migrations to the local database before previewing API changes. Hosted migrations run during deployment.
 
-Source code is stored in the private GitHub repository `criptonyte/form-health`. The live application, private access, database and runtime secrets remain hosted separately through Sites. No health records or credentials are stored in this repository.
+Source code is stored in the GitHub repository `criptonyte/form-health`. The live application, private access, database and runtime secrets remain hosted separately through Sites. No health records or credentials are stored in this repository.
 
 ## Verification
 

@@ -1,6 +1,6 @@
 {
   "id": "/form-health/",
-  "name": "Forum \u2014 Personal health",
+  "name": "Forum \u2014 Calorie tracker",
   "short_name": "Forum",
   "start_url": "/form-health/",
   "scope": "/form-health/",
@@ -21,6 +21,6 @@
       "purpose": "any maskable"
     }
   ],
-  "description": "Weight trends and a calorie journal on your device.",
+  "description": "Log calories and review your daily intake on your device.",
   "lang": "en-AU"
 }
