@@ -1,6 +1,8 @@
 import {deviceTimezone} from './timezone.mjs';
 import {vault,VaultError} from './vault.mjs';
 
+export const FIRST_LOG_DATE='2000-01-01';
+
 export function dateKey(date=new Date(),timezone=deviceTimezone()){
  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date);
  return ['year','month','day'].map(type=>parts.find(part=>part.type===type).value).join('-');
@@ -10,7 +12,7 @@ export function validateEntry(body){
  if(body?.kind!=='food')throw new VaultError('Choose a calorie entry.');
  const {date,time,value}=body;
  if(typeof date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||
-    new Date(date).toISOString().slice(0,10)!==date||date>dateKey()||date<'2000-01-01'){
+    new Date(date).toISOString().slice(0,10)!==date||date>dateKey()||date<FIRST_LOG_DATE){
   throw new VaultError('Choose a valid date, today or earlier.');
  }
  if(time!==undefined&&(typeof time!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))){

@@ -1,9 +1,9 @@
 import {useEffect,useRef,useState,type FormEvent} from 'react';
-import {Check,Download,Loader2,Plus,Trash2,Utensils,X} from 'lucide-react';
-import {api,dateKey} from './local-api.mjs';
+import {CalendarDays,Check,ChevronLeft,ChevronRight,Download,Loader2,Plus,Trash2,X} from 'lucide-react';
+import {api,dateKey,FIRST_LOG_DATE} from './local-api.mjs';
 import {vault} from './vault.mjs';
 import {deviceTimezone} from './timezone.mjs';
-import {calorieWeek,type CalorieEntry} from './calorie-week';
+import {calorieWeek,journalWeekEnd,shiftDay,type CalorieEntry} from './calorie-week';
 import {watchAppUpdates} from './app-updates.mjs';
 import {dismissLegacyNotifications} from './retire-notifications.mjs';
 
@@ -13,11 +13,12 @@ type InstallEvent = Event & {
  userChoice: Promise<{outcome:'accepted'|'dismissed'}>;
 };
 type Modal = 'food'|'install'|'vault';
-const fmt=(value:number, digits=0)=>value.toLocaleString('en-AU',{minimumFractionDigits:digits,maximumFractionDigits:digits});
+const fmt=(value:number)=>value.toLocaleString('en-AU',{maximumFractionDigits:0});
 const shortDate=(date:string)=>new Date(date+'T12:00:00Z').toLocaleDateString('en-AU',{day:'numeric',month:'short',timeZone:'UTC'});
 
 export default function Dashboard(){
  const [entries,setEntries]=useState<CalorieEntry[]>([]);
+ const [selectedDate,setSelectedDate]=useState<string|null>(null);
  const [loading,setLoading]=useState(true);
  const [ready,setReady]=useState(false);
  const [modal,setModal]=useState<Modal|null>(null);
@@ -35,6 +36,11 @@ export default function Dashboard(){
  const timezone=deviceTimezone();
  const now=new Date();
  const today=dateKey(now,timezone);
+ const day=selectedDate&&selectedDate<=today?selectedDate:today;
+ const dailyEntries=entries.filter(entry=>entry.date===day);
+ const dailyTotal=dailyEntries.reduce((total,entry)=>total+entry.value,0);
+ const week=calorieWeek(entries,journalWeekEnd(day,today),today);
+ const selectDay=(date:string)=>setSelectedDate(date===today?null:date);
 
  async function refresh(){
   const data=await api('data');
@@ -97,6 +103,7 @@ export default function Dashboard(){
  useEffect(()=>{
   if(!modal){dialog.current?.close();return;}
   if(!dialog.current?.open)dialog.current?.showModal();
+  if(modal==='food')dialog.current?.querySelector<HTMLInputElement>('input[name="value"]')?.focus();
   const previous=document.body.style.overflow;
   document.body.style.overflow='hidden';
   return()=>{document.body.style.overflow=previous;};
@@ -138,40 +145,40 @@ export default function Dashboard(){
    if((await installEvent.userChoice).outcome==='accepted'){
     setInstalled(true);
     setModal(null);
-    setToast('Forum added to your device.');
+    setToast('Form added to your device.');
    }
   }catch{
    // The install dialog still offers Chrome's manual instructions.
   }
  }
 
- return <div className="app-shell simple-layout">
+ return <div className="app-shell">
   <div className="main-wrap">
    <header className="topbar">
-    <a className="brand" href="./" aria-label="Forum home"><span className="brand-word" aria-hidden="true">form<span className="brand-dot">.</span></span></a>
+    <a className="brand" href="./" aria-label="Form home"><span className="brand-word" aria-hidden="true">form<span className="brand-dot">.</span></span></a>
     {!installed&&<button className="header-action" onClick={()=>setModal('install')}><Download size={17}/>Install app</button>}
    </header>
    <main>
-    <section className="page-heading"><div className="page-heading-copy">
-     <h1>Today</h1>
-     <time dateTime={today}>{now.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',timeZone:timezone})}</time>
-    </div></section>
     {updateWorker&&!modal&&!busy&&!undoEntry&&<div className="update-notice" role="status"><span>Update available</span><button disabled={updating} onClick={()=>{reloadForUpdate.current=true;setUpdating(true);updateWorker.postMessage({type:'ACTIVATE_UPDATE'});}}>{updating?'Updating…':'Refresh'}</button></div>}
     {error&&<div className="notice error" role="alert"><span>{error}</span><button onClick={openVault}>Retry</button></div>}
     {loading&&<p className="loading-note" role="status"><Loader2 size={14} className="spin"/>Opening your journal…</p>}
     {!loading&&!ready&&!error&&<button className="button primary" onClick={()=>setModal('vault')}>Open your saved entries</button>}
-    {ready&&<CalorieCard entries={entries} today={today} timezone={timezone} onLog={()=>setModal('food')} onRemove={remove} busy={busy}/>}
+    {ready&&<>
+     <DaySummary day={day} today={today} total={dailyTotal} onSelect={selectDay} onLog={()=>setModal('food')}/>
+     <CalorieWeek week={week} selectedDay={day} today={today} onSelect={selectDay}/>
+     <DayEntries entries={dailyEntries} day={day} today={today} timezone={timezone} busy={busy} onRemove={remove}/>
+    </>}
    </main>
   </div>
   {undoEntry&&<div className="undo-notice" role="status"><span>Calorie entry deleted</span><button disabled={busy} onClick={undo}>Undo</button><button aria-label="Dismiss undo" onClick={()=>setUndoEntry(null)}><X size={16}/></button></div>}
   {toast&&<div className="toast" role="status"><Check size={17}/><span>{toast}</span><button aria-label="Dismiss message" onClick={()=>setToast('')}><X size={16}/></button></div>}
-  <dialog aria-labelledby={modal ? modal+'-title' : undefined} ref={dialog} onCancel={()=>setModal(null)} onClick={event=>{if(event.target===dialog.current)setModal(null);}}>
+  <dialog className={modal==='food'?'log-sheet':undefined} aria-labelledby={modal ? modal+'-title' : undefined} ref={dialog} onCancel={()=>setModal(null)} onClick={event=>{if(event.target===dialog.current)setModal(null);}}>
    <div className="modal-content">
     <button className="modal-close icon-button" aria-label="Close dialog" onClick={()=>setModal(null)}><X size={20}/></button>
-    {modal==='food'&&ready&&<EntryForm today={today} timezone={timezone} onSave={async entry=>{await api('records',entry);await refresh();setModal(null);setToast('Calories saved.');}}/>}
+    {modal==='food'&&ready&&<EntryForm day={day} today={today} timezone={timezone} onSave={async entry=>{await api('records',entry);await refresh();selectDay(entry.date);setModal(null);setToast('Entry saved.');}}/>}
     {modal==='vault'&&<VaultForm onUnlocked={async()=>{await refresh();setError('');setModal(null);}}/>}
     {modal==='install'&&<>
-     <h2 id="install-title">Install Forum</h2>
+     <h2 id="install-title">Install Form</h2>
      {installEvent?<button className="button primary full" onClick={install}><Download size={17}/>Install app</button>:<p className="modal-description">In Chrome, open the menu and choose <strong>Add to Home screen</strong> or <strong>Install app</strong>.</p>}
     </>}
    </div>
@@ -179,71 +186,156 @@ export default function Dashboard(){
  </div>;
 }
 
-function CalorieCard({entries,today,timezone,onLog,onRemove,busy}:{
- entries:CalorieEntry[];
+type Week = ReturnType<typeof calorieWeek>;
+
+function DaySummary({day,today,total,onSelect,onLog}:{
+ day:string;
  today:string;
- timezone:string;
+ total:number;
+ onSelect:(day:string)=>void;
  onLog:()=>void;
- onRemove:(entry:CalorieEntry)=>void;
- busy:boolean;
 }){
- const foods=entries.filter(entry=>entry.date===today);
- const total=foods.reduce((sum,entry)=>sum+entry.value,0);
- const timeFormat=new Intl.DateTimeFormat('en-AU',{hour:'numeric',minute:'2-digit',timeZone:timezone});
- return <section className="calorie-card">
-  <div className="calorie-card-heading">
-   <span className="calorie-icon"><Utensils size={19}/></span><h2>Calorie journal</h2>
-  </div>
-  <p className="calorie-label">Today's intake</p>
-  <div className="calorie-summary">
-   <strong className="calorie-total">{foods.length?fmt(total):'—'}<small> kcal</small></strong>
-   <p className="calorie-count">{foods.length?`${foods.length} ${foods.length===1?'entry':'entries'} today`:'Nothing logged today'}</p>
-  </div>
-  <button className="button calorie-log" onClick={onLog}><Plus size={17}/>Log calories</button>
-  <CalorieWeek entries={entries} today={today}/>
-  {foods.length>0&&<div className="calorie-history">
-   <h3>Today's entries <span>{foods.length}</span></h3>
-   <div className="calorie-history-list" aria-label="Today's calorie entries">
-    {foods.map(entry=><div className="journal-row" key={entry.id}>
-     <div>
-      <b>{entry.label||'Calories'}</b>
-      <small>{entry.loggedAt?entry.loggedAt.slice(11,16):entry.createdAt?timeFormat.format(new Date(entry.createdAt)):'Today'}</small>
-     </div>
-     <strong>{fmt(entry.value)}<small> kcal</small></strong>
-     <button className="icon-button delete" title="Delete entry" aria-label={`Delete ${fmt(entry.value)} calorie entry`} disabled={busy} onClick={()=>onRemove(entry)}><Trash2 size={17}/></button>
-    </div>)}
+ const current=day===today;
+ const date=new Date(day+'T12:00:00Z');
+ const title=current?'Today':date.toLocaleDateString('en-AU',{weekday:'long',timeZone:'UTC'});
+ const dateLabel=date.toLocaleDateString('en-AU',{day:'numeric',month:'long',year:date.getUTCFullYear()!==Number(today.slice(0,4))?'numeric':undefined,timeZone:'UTC'});
+ return <section className="day-summary" aria-labelledby="day-title">
+  <div className="day-heading">
+   <div className="day-title-group">
+    <h1 id="day-title">{title}</h1>
+    <label className="date-picker">
+     <span aria-hidden="true">{dateLabel}<CalendarDays size={14}/></span>
+     <input type="date" aria-label="Choose a journal date" value={day} min={FIRST_LOG_DATE} max={today}
+      onInput={event=>{
+       const next=event.currentTarget.value;
+       if(next>=FIRST_LOG_DATE&&next<=today)onSelect(next);
+      }}
+      onClick={event=>{if(event.currentTarget.showPicker)event.currentTarget.showPicker();}}/>
+    </label>
    </div>
-  </div>}
+   <div className="day-nav" role="group" aria-label="Browse days">
+    <button type="button" className="icon-button" aria-label="Previous day" disabled={day===FIRST_LOG_DATE} onClick={()=>onSelect(shiftDay(day,-1))}><ChevronLeft size={22}/></button>
+    <button type="button" className="icon-button" aria-label="Next day" disabled={current} onClick={()=>onSelect(shiftDay(day,1))}><ChevronRight size={22}/></button>
+   </div>
+  </div>
+  <div className="day-total" aria-live="polite">
+   <span className="total-label">Calories logged</span>
+   <p><strong>{fmt(total)}</strong><span>kcal</span></p>
+  </div>
+  <div className="day-actions">
+   <button className="button primary log-button" type="button" onClick={onLog}><Plus size={21}/>Log calories</button>
+   {!current&&<button className="button secondary" type="button" onClick={()=>onSelect(today)}>Back to today</button>}
+  </div>
  </section>;
 }
 
-function CalorieWeek({entries,today}:{entries:CalorieEntry[];today:string}){
- const {days,average}=calorieWeek(entries,today);
- const logged=days.filter(day=>day.count>0);
- const [selectedKey,setSelectedKey]=useState<string|null>(null);
- const selected=days.find(day=>day.key===selectedKey);
- const maximum=Math.max(1,...logged.map(day=>day.total));
- return <section className="calorie-week" aria-labelledby="calorie-week-title">
-  <div className="calorie-week-heading"><h3 id="calorie-week-title">Last 7 days</h3><span>{logged.length}/7 logged</span></div>
-  <div className="calorie-bars" role="group" aria-label="Daily calorie totals, oldest first">
+function CalorieWeek({week,selectedDay,today,onSelect}:{week:Week;selectedDay:string;today:string;onSelect:(day:string)=>void}){
+ const {days,average}=week;
+ const maximum=Math.max(1,...days.map(day=>day.total));
+ return <section className="journal-panel calorie-week" aria-labelledby="calorie-week-title">
+  <div className="panel-heading">
+   <h2 id="calorie-week-title">{days.at(-1)?.key===today?'Last 7 days':'7-day intake'}</h2>
+   <span className="week-range">{shortDate(days[0].key)} – {shortDate(days[6].key)}</span>
+  </div>
+  <div className="calorie-bars" role="group" aria-label="Daily totals, oldest first">
    {days.map(day=>{
-    const isToday=day.key===today;
+    const current=day.key===today;
     const weekday=new Date(day.key+'T12:00:00Z').toLocaleDateString('en-AU',{weekday:'short',timeZone:'UTC'});
-    const detail=day.count?fmt(day.total,0)+' kcal':'No entries';
-    return <button className={isToday?'calorie-day calorie-day--today':'calorie-day'} key={day.key} type="button" aria-label={`${isToday?'Today':weekday} ${shortDate(day.key)}, ${detail}${isToday&&day.count?' so far':''}`} aria-pressed={selected?.key===day.key} onClick={()=>setSelectedKey(selected?.key===day.key?null:day.key)}>
-     <span className="calorie-day-track" aria-hidden="true">{day.count>0&&<span className="calorie-day-bar" style={{height:`${day.total/maximum*100}%`}}/>}</span><span aria-hidden="true">{isToday?'Today':weekday}</span>
+    const detail=day.count?fmt(day.total)+' kcal':'No entries';
+    return <button className="calorie-day" key={day.key} type="button"
+     data-today={current} aria-pressed={selectedDay===day.key} disabled={day.key<FIRST_LOG_DATE}
+     aria-label={(current?'Today, ':weekday+' ')+shortDate(day.key)+', '+detail}
+     onClick={()=>onSelect(day.key)}>
+     <span className="calorie-track" aria-hidden="true">
+      {day.count>0?<span className="calorie-bar" style={{height:(day.total/maximum*100)+'%'}}/>:<span className="calorie-empty"/>}
+     </span>
+     <span aria-hidden="true">{current?'Today':weekday}</span>
     </button>;
    })}
   </div>
-  <p className="calorie-week-detail" aria-live="polite">{selected?<>{selected.key===today?'Today so far':shortDate(selected.key)} <strong>{selected.count?fmt(selected.total,0)+' kcal':'No entries'}</strong></>:average===null?'No completed days logged':<>Avg. on prior logged days <strong>{fmt(average,0)} kcal</strong></>}</p>
+  {average!==null&&<p className="week-average"><span>Average per completed logged day</span><strong>{fmt(average)} kcal</strong></p>}
  </section>;
 }
-function EntryForm({today,timezone,onSave}:{timezone:string;today:string;onSave:(entry:NewEntry)=>Promise<void>}){
- const [error,setError]=useState(''),[saving,setSaving]=useState(false);
- async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();setSaving(true);setError('');const f=new FormData(e.currentTarget);try{await onSave({kind:'food',date:String(f.get('date')),time:String(f.get('time')),value:Number(f.get('value')),label:''});}catch(e){setError((e as Error).message);}finally{setSaving(false);}}
- return <form onSubmit={submit}><span className="modal-feature-icon peach"><Utensils size={26}/></span><h2 id="food-title">Log calories</h2><p className="modal-description">Just an amount and a time. Change the date for an earlier entry.</p><label>Calories (kcal)<input name="value" type="number" step="1" min={1} max={10000} placeholder="450" required autoFocus/></label><div className="form-row"><label>Date<input type="date" name="date" defaultValue={today} max={today} required/></label><label>Time<input type="time" name="time" defaultValue={new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:timezone}).format(new Date())} required/></label></div>{error&&<p className="form-error" role="alert">{error}</p>}<button className="button primary full" disabled={saving}>{saving?<Loader2 className="spin" size={17}/>:<Plus size={17}/>}Save calories</button></form>;
+
+function DayEntries({entries,day,today,timezone,busy,onRemove}:{
+ entries:CalorieEntry[];
+ day:string;
+ today:string;
+ timezone:string;
+ busy:boolean;
+ onRemove:(entry:CalorieEntry)=>void;
+}){
+ const timeOptions={hour:'numeric',minute:'2-digit'} as const;
+ const clock=new Intl.DateTimeFormat('en-AU',{...timeOptions,timeZone:timezone});
+ const savedTime=new Intl.DateTimeFormat('en-AU',{...timeOptions,timeZone:'UTC'});
+ return <section className="journal-panel day-entries" aria-labelledby="entries-title">
+  <div className="panel-heading"><h2 id="entries-title">Entries</h2>
+   {entries.length>0&&<span>{entries.length} {entries.length===1?'entry':'entries'}</span>}
+  </div>
+  {entries.length>0?<ul className="entry-list">
+   {entries.map(entry=>{
+    const time=entry.loggedAt?savedTime.format(new Date(entry.loggedAt+'Z')):entry.createdAt?clock.format(new Date(entry.createdAt)):'';
+    return <li className="entry-row" key={entry.id}>
+     <div className="entry-description">
+      {entry.label&&<strong>{entry.label}</strong>}
+      <span>{time||(entry.label?'':'Calories')}</span>
+     </div>
+     <strong className="entry-value">{fmt(entry.value)} <span>kcal</span></strong>
+     <button className="icon-button delete-button" type="button" title="Delete entry"
+      aria-label={'Delete '+fmt(entry.value)+' calorie entry'+(time?' at '+time:'')}
+      disabled={busy} onClick={()=>onRemove(entry)}><Trash2 size={17}/></button>
+    </li>;
+   })}
+  </ul>:<p className="entries-empty">{day===today?'Nothing logged today.':'Nothing logged for this day.'}</p>}
+ </section>;
+}
+
+function EntryForm({day,today,timezone,onSave}:{
+ day:string;
+ today:string;
+ timezone:string;
+ onSave:(entry:NewEntry)=>Promise<void>;
+}){
+ const [error,setError]=useState('');
+ const [saving,setSaving]=useState(false);
+ const currentTime=new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZone:timezone}).format(new Date());
+ async function submit(event:FormEvent<HTMLFormElement>){
+  event.preventDefault();
+  if(saving)return;
+  setSaving(true);
+  setError('');
+  const fields=new FormData(event.currentTarget);
+  try{
+   await onSave({
+    kind:'food',
+    date:String(fields.get('date')),
+    time:String(fields.get('time')),
+    value:Number(fields.get('value')),
+    label:'',
+   });
+  }catch(error){
+   setError((error as Error).message);
+  }finally{
+   setSaving(false);
+  }
+ }
+ return <form onSubmit={submit}>
+  <h2 id="food-title">Log calories</h2>
+  <label className="amount-field">Amount
+   <span className="amount-input">
+    <input name="value" type="number" inputMode="numeric" step="1" min={1} max={10000} placeholder="0" required/>
+    <span>kcal</span>
+   </span>
+  </label>
+  <div className="form-row">
+   <label>Date<input type="date" name="date" defaultValue={day} min={FIRST_LOG_DATE} max={today} required/></label>
+   <label>Time<input type="time" name="time" defaultValue={currentTime} required/></label>
+  </div>
+  {error&&<p className="form-error" role="alert">{error}</p>}
+  <button className="button primary full" disabled={saving}>{saving&&<Loader2 className="spin" size={17}/>}{saving?'Saving…':'Save entry'}</button>
+ </form>;
 }
 function VaultForm({onUnlocked}:{onUnlocked:()=>Promise<void>}){
  const [error,setError]=useState(''),[saving,setSaving]=useState(false);
- return <form onSubmit={async e=>{e.preventDefault();setSaving(true);setError('');try{await vault.unlock(String(new FormData(e.currentTarget).get('passphrase')));await vault.remember();await onUnlocked();}catch(e){setError((e as Error).message);}finally{setSaving(false);}}}><h2 id="vault-title">Open your saved entries</h2><p className="modal-description">Enter your old vault passphrase once to move to automatic opening. After this, Forum opens directly on this device.</p><label>Previous vault passphrase<input name="passphrase" type="password" autoComplete="current-password" required autoFocus/></label>{error&&<p className="form-error" role="alert">{error}</p>}<button className="button primary full" disabled={saving}>{saving?'Opening…':'Continue without future unlocks'}</button><p className="fine-print">Anyone using this browser can open your records. Your phone’s screen lock protects access to the device.</p></form>;
+ return <form onSubmit={async e=>{e.preventDefault();setSaving(true);setError('');try{await vault.unlock(String(new FormData(e.currentTarget).get('passphrase')));await vault.remember();await onUnlocked();}catch(e){setError((e as Error).message);}finally{setSaving(false);}}}><h2 id="vault-title">Open your saved entries</h2><p className="modal-description">Enter your old vault passphrase once to move to automatic opening. After this, Form opens directly on this device.</p><label>Previous vault passphrase<input name="passphrase" type="password" autoComplete="current-password" required autoFocus/></label>{error&&<p className="form-error" role="alert">{error}</p>}<button className="button primary full" disabled={saving}>{saving?'Opening…':'Continue without future unlocks'}</button><p className="fine-print">Anyone using this browser can open your records. Your phone’s screen lock protects access to the device.</p></form>;
 }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {calorieWeek} from '../browser/calorie-week.ts';
+import {calorieWeek,journalWeekEnd,shiftDay} from '../browser/calorie-week.ts';
 
 test('seven days include today and average only completed days with entries',()=>{
  const entries=[
@@ -26,4 +26,20 @@ test('calendar arithmetic crosses month and year boundaries',()=>{
  const {days,average}=calorieWeek([],'2027-01-03');
  assert.deepEqual(days.map(day=>day.key),['2026-12-28','2026-12-29','2026-12-30','2026-12-31','2027-01-01','2027-01-02','2027-01-03']);
  assert.equal(average,null);
+});
+
+test('browsing earlier days selects their seven-day window and includes its final logged day',()=>{
+ const today='2027-01-03';
+ assert.equal(journalWeekEnd('2026-12-28',today),today);
+ const previousWeek=journalWeekEnd(shiftDay(today,-7),today);
+ assert.equal(previousWeek,'2026-12-27');
+ const entries=[
+  {kind:'food',date:'2026-12-21',value:1000},
+  {kind:'food',date:'2026-12-27',value:1800},
+  {kind:'food',date:'2026-12-28',value:900},
+ ];
+ const {days,average}=calorieWeek(entries,previousWeek,today);
+ assert.equal(days[0].key,'2026-12-21');
+ assert.deepEqual(days.at(-1),{key:'2026-12-27',count:1,total:1800});
+ assert.equal(average,1400);
 });

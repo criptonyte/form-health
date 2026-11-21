@@ -1,6 +1,6 @@
 # Forum calorie tracker
 
-The [GitHub Pages app](https://criptonyte.github.io/form-health/) opens directly to the calorie journal. The journal shows today's total, a seven-day chart and today's entries. Select a bar to see that date's total. The weekly average uses earlier days with entries. Log an amount in kcal and adjust the prefilled date and time to add a past entry. Deleting an entry offers Undo.
+The [GitHub Pages app](https://criptonyte.github.io/form-health/) opens directly to the calorie journal. The journal shows the selected day's total and entries below an interactive seven-day chart. Tap a chart day, use the arrows, or open the date picker to review earlier logs. The weekly average uses completed days with entries. Logging starts on the selected day and lets you adjust the prefilled date and time. Deleting an entry offers Undo.
 
 ## Local storage and installation
 
